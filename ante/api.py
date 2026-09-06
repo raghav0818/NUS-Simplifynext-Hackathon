@@ -14,11 +14,12 @@ single-founder tool and is the honest version of the multi-tenant story.
 """
 from __future__ import annotations
 
+import dataclasses
 import datetime as dt
 import json
 import pathlib
 
-from fastapi import FastAPI, File, Form, UploadFile
+from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
@@ -26,6 +27,35 @@ import vault as _vault
 from ante.detect import STALE_AFTER, stale
 
 WEB = pathlib.Path(__file__).resolve().parent.parent / "web"
+
+#: A rule note ages on three different clocks and the UI shows all three,
+#: because collapsing them is exactly the claim this product refuses to make:
+#: `verified` is a person's, `checked` and `confirmed` are the bot's.
+FRESHNESS = ("verified", "checked", "confirmed")
+
+
+def _age(value) -> int | None:
+    """Days since a frontmatter date, or None if it was never set."""
+    if not value:
+        return None
+    if isinstance(value, str):
+        try:
+            value = dt.date.fromisoformat(value)
+        except ValueError:
+            return None
+    return (dt.date.today() - value).days
+
+
+def _slug(slug: str) -> str:
+    """A slug that names a real rule, or a 404.
+
+    `slug` reaches ante.apply as a path segment, so it is matched against the
+    rule base rather than sanitised -- an allowlist cannot be talked past the way
+    a filter can, and '../../etc/passwd' is simply not a rule.
+    """
+    if slug not in {p.stem for p in _vault._notes("rules")}:
+        raise HTTPException(404, f"no rule with slug {slug!r}")
+    return slug
 
 app = FastAPI(
     title="Ante",
@@ -68,14 +98,138 @@ def findings() -> dict:
 
     This is the hero screen's data and it is free, so the board renders before
     the advisor has finished thinking, and it still renders when the SSO token
-    has expired. Dollar impact is deliberately absent: those figures live in the
-    human-written `# Cost` section of each rule note and reach the UI through
-    /api/brief, rather than being invented here.
+    has expired.
+
+    `annual_gap` is present per party only where the shortfall is arithmetic over
+    two figures the vault already holds -- a salary against the floor it must
+    clear -- and `annual_gap_total` sums exactly those. Every other rule is
+    priced in its own human-written `# Cost` prose, served verbatim by
+    /api/rules, because an employer CPF rate or a penalty tier is not in the
+    vault and this endpoint does not invent one.
     """
     exp = _vault.exposure()
     return {**exp,
             "parties": sum(len(r["affected"]) for r in exp["rules"]),
+            "priced_in_prose": sum(1 for r in exp["rules"]
+                                   for a in r["affected"] if a["annual_gap"] is None),
+            "company": _vault._company().get("title"),
             "as_of": str(dt.date.today())}
+
+
+@app.get("/api/rules")
+def rules() -> dict:
+    """The whole rule base, with its freshness and its human-written prose.
+
+    Carries three things the board cannot get from /api/findings: the `# Cost`
+    and `# Next step` sections a person wrote (quoted, never paraphrased), and
+    the three ageing clocks. `verified` is a human's claim that the rule still
+    means what the note says; `checked` and `confirmed` are the curator's. They
+    are reported separately because merging them would let a bot's daily sweep
+    pass for a person having read the page.
+    """
+    out = []
+    for p in _vault._notes("rules"):
+        fm, body = _vault._split(p)
+        out.append({
+            "path": _vault._rel(p), "slug": p.stem,
+            **{k: fm.get(k) for k in ("title", "clock", "effective", "applies_to",
+                                      "severity", "resource", "unit", "bites",
+                                      "threshold_before", "threshold_after",
+                                      "revision", "last_change")},
+            "effective": str(fm.get("effective")),
+            "freshness": {k: {"on": str(fm.get(k)) if fm.get(k) else None,
+                              "days": _age(fm.get(k))} for k in FRESHNESS},
+            "overdue_human_review": (_age(fm.get("verified")) or STALE_AFTER + 1) > STALE_AFTER,
+            "cost": _vault.section(body, "# Cost"),
+            "next_step": _vault.section(body, "# Next step"),
+        })
+    return {"rules": out, "stale_after_days": STALE_AFTER}
+
+
+@app.get("/api/alerts")
+def alerts() -> dict:
+    """What Ante raised -- and, more usefully, what it refused to do.
+
+    A bot that declines to write an unverified figure is a better trust signal
+    than one that is never wrong, so `needs_human_check` is broken out rather
+    than buried: it is the refusals tray, fed straight from the vault.
+    """
+    out = []
+    for p in sorted((_vault.VAULT / "alerts").glob("*.md"), reverse=True):
+        if p.stem in ("index", "_SCHEMA"):
+            continue
+        fm, body = _vault._split(p)
+        out.append({"path": _vault._rel(p), **{k: str(fm[k]) if k in fm else None
+                                               for k in ("raised", "rule", "severity",
+                                                         "status", "drift")},
+                    "what_happened": _vault.section(body, "# What happened"),
+                    "next_step": _vault.section(body, "# Next step")})
+    return {"alerts": out,
+            "needs_human_check": sum(a["status"] == "needs_human_check" for a in out)}
+
+
+@app.get("/api/history/{slug}")
+def history(slug: str) -> dict:
+    """Every auto-applied change to one rule, newest first, with its old figures.
+
+    The board renders this as a diff -- "S$7,400 -> S$8,000", the old note beside
+    the new one -- so a founder can see what the machine changed before deciding
+    whether to keep it. Undo is POST /api/rollback/{slug}.
+    """
+    from ante.apply import HISTORY
+    now, _ = _vault._split(_vault.VAULT / "rules" / f"{_slug(slug)}.md")
+    folder = HISTORY / slug
+    out = []
+    for f in sorted(folder.glob("*.md"), reverse=True) if folder.is_dir() else []:
+        was, _ = _vault._split(f)
+        out.append({"backup": f.name, "taken": f.stem,
+                    "threshold_after": was.get("threshold_after"),
+                    "effective": str(was.get("effective")),
+                    "revision": was.get("revision")})
+    return {"slug": slug, "can_rollback": bool(out),
+            "now": {"threshold_after": now.get("threshold_after"),
+                    "effective": str(now.get("effective")),
+                    "revision": now.get("revision"),
+                    "last_change": str(now.get("last_change")) if now.get("last_change") else None},
+            "history": out}
+
+
+@app.post("/api/rollback/{slug}")
+def undo(slug: str) -> dict:
+    """One-click undo of the last auto-applied change. The human's veto.
+
+    Watching a machine change a regulation and a person overrule it in one click
+    is the demo; this is the button behind it.
+    """
+    from ante.apply import rollback
+    res = rollback(_slug(slug))
+    if "error" in res:
+        raise HTTPException(409, res["error"])
+    return res
+
+
+@app.post("/api/ask")
+def ask_advisor(question: str = Form(...), thread: str = Form("")) -> dict:
+    """The advisor, for the chat sidebar. Needs Bedrock; ~17k in / 2k out.
+
+    Chat is the drill-down, never the front door: /api/findings has already put
+    the board on screen for free, and this answers "why?" against the same vault.
+    Returns the prose, the validated alerts, and the run's metrics, so the UI can
+    show Loop Discipline as a trust signal instead of hiding it in a log.
+    """
+    from ante.model import credentials_ok
+    alive, detail = credentials_ok()
+    if not alive:
+        # 503, not 500: the board is still correct and still rendering, and the
+        # UI should say "commentary unavailable", not "Ante is down"
+        raise HTTPException(503, f"bedrock unavailable: {detail}")
+    from ante.advisor import ask
+    out = ask(question, thread_id=thread or None)
+    return {"answer": out["answer"],
+            "alerts": [a.model_dump(mode="json") for a in out["alerts"]],
+            "turns": out["turns"],
+            "metrics": dataclasses.asdict(out["metrics"]),
+            "report": out["metrics"].report()}
 
 
 @app.post("/api/upload")
@@ -127,3 +281,81 @@ def send_brief(force: bool = False) -> dict:
 # entirely. Mounted last so it cannot shadow /api or /docs.
 if WEB.is_dir():
     app.mount("/", StaticFiles(directory=WEB, html=True), name="web")
+
+
+# --------------------------------------------------------------------------
+
+def _selfcheck() -> None:
+    """Every free endpoint, against the real vault, with no network and no AWS.
+
+    FastAPI's TestClient talks to the app in-process, so this is the same code
+    path uvicorn serves -- a route that 500s here 500s on stage.
+    """
+    from fastapi.testclient import TestClient
+
+    c = TestClient(app)
+
+    f = c.get("/api/findings").json()
+    assert f["rules_with_exposure"] == 6, f
+    assert f["parties"] == 6 and f["annual_gap_total"] == 4800.0, f
+    assert f["priced_in_prose"] == 4, f
+    print(f"findings ok  ->  {f['parties']} parties, S${f['annual_gap_total']:,.0f}/yr "
+          f"provable, {f['priced_in_prose']} priced in prose")
+
+    r = c.get("/api/rules").json()
+    assert len(r["rules"]) == 6, r
+    spass = next(x for x in r["rules"] if x["slug"] == "s-pass-qualifying-salary-2027")
+    # the two sections the founder acts on must arrive as the human wrote them
+    assert spass["next_step"].startswith("List every S Pass holder"), spass["next_step"]
+    assert "S$2,400 a year" in spass["cost"], spass["cost"]
+    # the three clocks stay apart: a machine confirmation is not a human re-read
+    assert set(spass["freshness"]) == {"verified", "checked", "confirmed"}, spass
+    assert spass["freshness"]["verified"]["days"] is not None, spass
+    print(f"rules ok     ->  {len(r['rules'])} rules with '# Cost' and '# Next step' "
+          f"quoted, 3 freshness clocks kept separate")
+
+    a = c.get("/api/alerts").json()
+    assert a["needs_human_check"] >= 1, a
+    assert all(x["what_happened"] for x in a["alerts"]), a
+    print(f"alerts ok    ->  {len(a['alerts'])} raised, "
+          f"{a['needs_human_check']} refusals for the tray")
+
+    h = c.get("/api/history/s-pass-qualifying-salary-2027").json()
+    assert h["now"]["threshold_after"] == 3600, h
+    assert "history" in h and isinstance(h["can_rollback"], bool), h
+    print(f"history ok   ->  rule at {h['now']['threshold_after']}, "
+          f"{len(h['history'])} backup(s), rollback {h['can_rollback']}")
+
+    # the slug allowlist: this segment reaches ante.apply, which joins it onto a
+    # filesystem path, so a slug that is not a rule must never get that far
+    assert c.get("/api/history/nope").status_code == 404
+    assert c.post("/api/rollback/nope").status_code == 404
+    # traversal never even routes: a path parameter cannot hold a "/", so these
+    # normalise to some other URL or fail to match. Asserted as "never
+    # succeeds" rather than "is 404", because the status is the router's
+    # business and pinning it would be testing Starlette, not Ante.
+    for bad in ("../../etc/passwd", "..", "a/../../b",
+                "%2e%2e%2f%2e%2e%2fetc%2fpasswd"):
+        assert not c.get(f"/api/history/{bad}").is_success, bad
+        assert not c.post(f"/api/rollback/{bad}").is_success, bad
+    assert c.post("/api/rollback/s-pass-qualifying-salary-2027").status_code == 409, \
+        "nothing to undo must be a 409, not a traceback"
+    print("guards ok    ->  unknown slugs 404, traversal unroutable, "
+          "nothing-to-undo 409")
+
+    # /api/ask needs Bedrock; without it the board is still right, so it must
+    # say "commentary unavailable" (503) rather than "Ante is down" (500)
+    from ante.model import credentials_ok
+    if not credentials_ok()[0]:
+        got = c.post("/api/ask", data={"question": "what changes?"})
+        assert got.status_code == 503, got.status_code
+        print("ask ok       ->  no credentials degrades to 503, board unaffected")
+
+    assert c.get("/api/health").json()["problems"] == [], "vault must validate"
+    print(f"\napi ok       ->  {'web/ mounted at /' if WEB.is_dir() else 'no web/ yet'}")
+
+
+if __name__ == "__main__":
+    import sys
+    sys.stdout.reconfigure(encoding="utf-8")
+    _selfcheck()

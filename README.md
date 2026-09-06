@@ -89,10 +89,21 @@ Four functions the agent eventually calls as tools, plus two extras:
 - `upcoming()` — what lands in the window, looking **backwards too**. A rule that took effect
   eight months ago and was never budgeted for is the expensive kind, not the irrelevant kind.
 - `exposure()` — **the join, done in Python.** Applies each rule's own `bites` test to the
-  people it touches and returns only those genuinely on the wrong side.
+  people it touches and returns only those genuinely on the wrong side, each carrying an
+  `annual_gap` where the shortfall is arithmetic (see below) and `None` where it is not.
+- `section(body, heading)` — one `# Heading` block of a note, for quoting a human's `# Cost`
+  and `# Next step` wording to the UI verbatim rather than paraphrasing it.
 
 `roster_scan` returns everyone in a *category*; `exposure()` returns everyone who *breaches*.
 The difference is the whole reason `bites` exists.
+
+**Why `annual_gap` is missing on four of the six findings.** The distance between a salary
+and the floor it must clear, times twelve, is derived from two figures the vault already
+holds and nothing else — so `_gap()` computes it, and the self-check asserts it against what
+the human wrote in `# Cost` (both notes say "S$2,400 a year"; Python has to agree to the
+dollar). An employer CPF rate and a late-filing penalty tier are *not* in the frontmatter,
+so deriving those would mean inventing a figure. Those rules stay `None` and are priced by
+their own prose instead. Half a bill that is provable beats a whole one that is not.
 
 **Why `bites:` is a field and not a prompt.** "Is this person non-compliant" is arithmetic, and
 arithmetic must not vary between runs. A qualifying-salary floor bites people paid *below* it;
@@ -240,9 +251,10 @@ python run.py negative        # proof it cannot invent a figure
 
 python -m ante.notify                    # brief self-check, writes to the outbox, sends nothing
 python -m ante.ingest                    # onboarding self-check, builds a throwaway vault
+python -m ante.api                       # every free route, in-process. No AWS, no network.
 python run.py brief                      # sweep, then email the founder IF something moved
 python run.py brief --force              # send regardless (the demo)
-python run.py serve                      # local API + /docs for the UI
+python run.py serve                      # the board at 127.0.0.1:8000, plus /docs
 ```
 
 Every module runs standalone and self-checks. Nothing needs a UI to demo.
@@ -328,12 +340,25 @@ sent to Bedrock to ask whether a figure moved.
 |---|---|---|
 | `GET /api/health` | vault valid? Bedrock alive? last sweep, overdue human reviews | free |
 | `GET /api/findings` | `vault.exposure()` — the hero screen's data | **free, no AWS** |
+| `GET /api/rules` | the rule base + `# Cost` / `# Next step` prose + freshness | **free, no AWS** |
+| `GET /api/alerts` | what was raised, and what Ante **refused** to write | **free, no AWS** |
+| `GET /api/history/{slug}` | every auto-applied change to one rule, for the diff | **free, no AWS** |
+| `POST /api/rollback/{slug}` | the human's veto, one click | free |
 | `POST /api/upload` | payroll CSV + four answers → a validated vault | free |
+| `POST /api/ask` | the advisor, for the chat sidebar | ~17k in / 2k out |
 | `POST /api/brief` | sweep + advise + email | ~17k in / 2k out |
 | `GET /docs` | FastAPI's interactive explorer | free |
 
-`/api/findings` is pure Python, so the board renders before the advisor has finished
-thinking — and still renders when the SSO token has expired.
+Everything the board needs is in the free half, so it renders before the advisor has
+finished thinking — and still renders when the SSO token has expired. `/api/ask` answers
+**503**, not 500, when credentials are dead: the board is still correct, and the UI says
+"commentary unavailable" rather than "Ante is down".
+
+`{slug}` is matched against the rule base rather than sanitised. It reaches `ante.apply`,
+which joins it onto a filesystem path, and an allowlist cannot be talked past the way a
+filter can.
+
+`python -m ante.api` self-checks every free route in-process, including the refusals.
 
 **One process serves one vault.** `vault.VAULT` resolves at import from `ANTE_VAULT`, so
 switching founders means restarting the server. That is correct for a local single-founder
@@ -348,65 +373,72 @@ ANTE_VAULT=./vaults/acme python run.py serve
 
 ---
 
-## UI/UX ideas
+### 11. `web/index.html` — the Runway Board
 
-There is **no UI yet** — everything is CLI plus Obsidian. That's a blank canvas, and the demo
-currently lives or dies on terminal output. Ranked by demo impact per hour of work:
+```bash
+python run.py serve      # then open http://127.0.0.1:8000/
+```
 
-### 1. The Runway Board (the hero screen)
-One page, three columns matching the three clocks: **Law moved · You grew · Date arriving**.
-Each card: who it hits, the dollar number, the date, a `.gov.sg` favicon-linked source. Cost of
-inaction totalled at the top in one big number — *"S$4,400 of unbudgeted payroll and S$600 of
-avoidable penalties in the next 14 months."* Founders don't want a compliance list, they want
-the bill.
+One file. No build step, no npm, no framework, no CDN — three ways of saying the same
+thing: it is served off `127.0.0.1`, it has to render with the network unplugged, and a
+demo that needs `npm install` to start is a demo that does not start. Dropping it in
+`web/` also means it is served from the same origin as the API, so CORS never enters the
+room.
 
-### 2. Timeline, not a calendar
-A horizontal 18-month strip with today as a vertical line. Anything **left of the line is
-already in force and unbudgeted** — colour it red, because that's the expensive category
-calendar apps structurally cannot show. `vault.upcoming()` already returns exactly this shape
-including negative `days_until`; it's a rendering job, not a logic job.
+It boots on the four **free** endpoints in parallel and paints before asking anything of
+AWS. `/api/health` is fetched *after* the first paint, because it makes an STS call that
+is slow exactly when credentials are dead — the board must not wait on the one thing
+that might be broken.
 
-### 3. Show the citation, not a link
-Hovering a figure expands the actual sentence lifted off the government page, greyed, with the
-URL beneath. We already store that quote in the snapshot and the `Verdict`. This is the single
-highest-trust-per-pixel thing we can build and it's nearly free.
+What is on it:
 
-### 4. A visible diff for every auto-applied change
-"CPF ceiling **S$7,400 → S$8,000**" with the old and new page regions side by side, the matched
-quote highlighted, and which of the five gates passed. Plus a one-click **Undo** wired to
-`--rollback`. Watching a machine change a regulation and then watching a human veto it in one
-click *is* the pitch.
+| | |
+|---|---|
+| **Three columns** | Law moved · You grew · Date arriving, straight off each rule's `clock`. Founders don't want a compliance list, they want the bill |
+| **The bill** | biggest text on the page — see "what the number is" below |
+| **18-month strip** | today as a red line, everything left of it on red ground, because *already in force and unbudgeted* is the expensive category a calendar structurally cannot show. Rules landing on the same day are grouped (`+117d ×3`) rather than drawn on top of each other — three clocks converge on 1 Jan 2027 and the strip should show that |
+| **The human's prose** | expand a card and the `# Cost` and `# Next step` sections appear *as written*, escaped and quoted, never paraphrased |
+| **Refusals tray** | fed from `alerts/` where `status: needs_human_check`. Most demos hide failure; a bot that declines to write an unverified figure is more convincing than one that is never wrong |
+| **Chat sidebar** | `POST /api/ask`, with Loop Discipline printed under the answer — the metric as a visible trust signal. The advisor is the drill-down, never the front door |
+| **Freshness** | human vs machine, side by side, amber past 90 days. It turns the `verified` / `checked` / `confirmed` distinction from an internal nicety into a feature |
+| **Copy to your accountant** | the whole finding as pasteable text with its source — founders forward, they don't share dashboards |
+| **Empty state** | "Nothing bites" plus the last sweep line, because a quiet day should read as proof of work rather than absence |
 
-### 5. Show the refusals
-A small "Ante refused to act on 2 changes" tray. Most demos hide failure; showing a bot that
-declines to write an unverified figure is more convincing than one that's never wrong. Feed it
-straight from `alerts/` where `status: needs_human_check`.
+**What the big number is, exactly.** `S$4,800/yr` is the *provable* half: the annualised
+distance between a salary and the floor it must clear, for the two rules where that is
+arithmetic over two figures the vault already holds. `vault._gap()` computes it and
+`vault.py`'s self-check asserts it **against the human-written `# Cost` prose** — both
+notes read "S$2,400 a year", and Python has to agree to the dollar.
 
-### 6. Chat as a sidebar, never the whole product
-The advisor is the drill-down, not the front door. Cards on the left, "why?" opens the thread
-on the right with tool calls collapsed into readable steps: *searched 6 rules → read 3 → scanned
-12 staff → 4 findings*. Loop Discipline becomes a visible trust signal instead of a metric.
+The other four findings deliberately have no number on the card. An employer CPF rate and
+a late-filing penalty tier are not in the vault's frontmatter, so deriving them here would
+be inventing a figure — the one thing this codebase does not do. Those cards say *"priced
+in this rule's cost note"* and show the note. The header says how many, so the total is
+never mistaken for the whole bill.
 
-### 7. Onboarding is the real UX risk — **now built**
-Shipped as `ante/ingest.py` and `POST /api/upload`. What is left for the UI is the form
-itself and the dropdown that resolves a `needs_mapping` response.
+**The prose is quoted, not rendered.** Everything is escaped first and only `**bold**` and
+pipe tables are promoted back — a rule note can never inject markup into the page quoting
+it. Blank lines separate paragraphs; single newlines are the author's 90-column git-diff
+wrapping and get reflowed, so cards do not show ragged mid-sentence breaks.
 
-Nobody fills in twelve staff notes by hand. Ask **four** questions — UEN, FYE, revenue
-run-rate, headcount — and generate the vault. Paste-a-payroll-CSV → `people/*.md` is the
-follow-up. The rule base ships pre-curated, so a founder should reach their first real alert in
-under two minutes.
+### What is still only an idea
 
-### 8. Freshness as a visible badge
-Each rule shows "human-verified 3 days ago · machine-confirmed today". Ageing past 90 days
-turns it amber. It's honest about what a bot can and can't confirm, and it turns the
-`verified` / `checked` / `confirmed` distinction from an internal nicety into a feature.
+Ranked by demo impact per hour of work:
 
-### 9. Small things that punch above their weight
-Dollar figures as the largest text on every card. `-14d` badges in red for already-in-force.
-Empty state that says *"Nothing bites in the next 90 days — last checked 2 hours ago"* with the
-checked count, because a quiet day should feel like proof of work, not absence. And a
-**"copy to your accountant"** button that emits the whole finding as pasteable text with
-sources — founders forward, they don't share dashboards.
+- **The visible diff.** `GET /api/history/{slug}` and `POST /api/rollback/{slug}` are live
+  and self-checked; what is missing is the panel that draws "CPF ceiling **S$7,400 →
+  S$8,000**" with the old and new page regions side by side, the matched quote highlighted,
+  which of the five gates passed, and a one-click **Undo** on it. The endpoints return
+  everything it needs. Watching a machine change a regulation and then watching a human veto
+  it in one click *is* the pitch, and it is still the best thirty seconds in the demo.
+- **The upload form.** `ante/ingest.py` and `POST /api/upload` are done, so onboarding
+  works from the CLI; the form itself and the dropdown that resolves a `needs_mapping`
+  response are not built. Nobody fills in twelve staff notes by hand — four questions plus
+  a payroll CSV should reach the first real alert in under two minutes.
+- **Counterparties.** `_SCHEMA.md` defines the type and `vault.py` makes the folder
+  agent-writable, but nothing writes to it yet. Watching an ACRA status flip to `Struck Off`
+  the week it happens is a whole feature, not a polish pass.
 
-### 10. Skip these for now
-Push notifications, multi-tenant login, a settings page, dark mode. None of them are the demo.
+### Skip these for now
+Push notifications, multi-tenant login, a settings page. None of them are the demo. (Dark
+mode came free with `prefers-color-scheme` and is not worth a line of anyone's time.)

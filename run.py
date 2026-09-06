@@ -47,7 +47,12 @@ def main() -> int:
     if args.cmd == "serve":
         import uvicorn
         import vault
+        from ante.api import WEB
         print(f"vault  {vault.VAULT}")
+        # the board is the thing to open, so it is named first and named at all
+        # -- a server that only prints /docs invites a demo of the wrong screen
+        print(f"board  http://127.0.0.1:{args.port}/"
+              if WEB.is_dir() else "board  (no web/ directory -- API only)")
         print(f"docs   http://127.0.0.1:{args.port}/docs")
         uvicorn.run("ante.api:app", host="127.0.0.1", port=args.port)
         return 0

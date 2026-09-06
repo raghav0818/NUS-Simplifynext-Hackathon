@@ -43,6 +43,9 @@ PASS_TYPES = {"citizen", "pr", "s_pass", "ep", "entrepass"}
 SECTIONS = ("# What changes", "# Who it hits", "# Cost", "# Next step", "# Citations")
 WRITABLE = ("alerts/", "counterparties/")
 
+#: Units whose shortfall is money rather than a rate or a duration.
+MONEY = {"SGD_per_month", "SGD_per_year"}
+
 
 # --------------------------------------------------------------------------
 # reading
@@ -86,6 +89,48 @@ def _band(fm):
 
 def _company():
     return _split(VAULT / "company" / "profile.md")[0]
+
+
+def section(body: str, heading: str) -> str:
+    """One '# Heading' section of a note body, heading line stripped.
+
+    The rule notes' prose is human-owned and the UI quotes it rather than
+    paraphrasing -- '# Cost' priced by a person and '# Next step' written by one
+    are the two the founder actually acts on. Empty string when absent, because a
+    missing section is a rendering gap, not a reason to fail a request.
+    """
+    out, taking = [], False
+    for line in (body or "").splitlines():
+        if line.startswith("# "):
+            taking = line.strip() == heading
+            continue
+        if taking:
+            out.append(line)
+    return "\n".join(out).strip()
+
+
+def _gap(value, fm) -> float | None:
+    """Annualised shortfall against a floor, or None when it is not arithmetic.
+
+    Only `bites: below` on a money unit qualifies: the distance between a salary
+    and the floor it must clear, times twelve, is derived from two figures the
+    vault already holds and nothing else. The rules' own '# Cost' sections agree
+    with it to the dollar -- S Pass and EP both read "S$2,400 a year".
+
+    Everything else is deliberately None. An employer CPF rate or a late-filing
+    penalty tier is not in the vault's frontmatter, and re-deriving one here
+    would be inventing a figure -- the one thing this codebase does not do. Those
+    rules carry their price in the human-written '# Cost' prose instead, and the
+    UI quotes that.
+    """
+    if fm.get("bites") != "below" or fm.get("unit") not in MONEY:
+        return None
+    if not isinstance(value, (int, float)) or isinstance(value, bool):
+        return None
+    short = fm["threshold_after"] - value
+    if short <= 0:
+        return None
+    return round(short * (12 if fm["unit"] == "SGD_per_month" else 1), 2)
 
 
 def _fye():
@@ -340,13 +385,19 @@ def exposure() -> dict:
     non-compliance is arithmetic, so it is done here rather than by a model that
     has to re-derive it from prose on every run -- the same split the curator
     uses, where the model describes and Python decides.
+
+    Each affected party carries `annual_gap` where the shortfall is arithmetic
+    (see _gap) and None where it is not, so a caller can total what is provably
+    known and quote the rule's '# Cost' prose for the rest.
     """
-    out = []
+    out, total = [], 0.0
     for rule in upcoming():
         fm, _ = _split(VAULT / rule["path"])
         test = BITES[fm["bites"]]
-        hit = [s for s in rule["subjects"] if test(s["value"], fm)]
+        hit = [{**s, "annual_gap": _gap(s["value"], fm)}
+               for s in rule["subjects"] if test(s["value"], fm)]
         if hit:
+            total += sum(a["annual_gap"] or 0 for a in hit)
             out.append({**{k: rule[k] for k in
                            ("path", "title", "clock", "lands", "days_until",
                             "in_force", "severity", "trigger_field",
@@ -354,7 +405,10 @@ def exposure() -> dict:
                         "bites": fm["bites"],
                         "threshold_before": fm.get("threshold_before"),
                         "affected": hit})
-    return {"rules_with_exposure": len(out), "rules": out}
+    # only the provable half: rules priced in prose are not in this number, and
+    # the UI says so rather than presenting it as the whole bill
+    return {"rules_with_exposure": len(out), "rules": out,
+            "annual_gap_total": round(total, 2)}
 
 
 # --------------------------------------------------------------------------
@@ -398,6 +452,25 @@ if __name__ == "__main__":
     assert all(len(v) == 1 for v in hit.values()), hit
     print(f"exposure ok  ->  {exp['rules_with_exposure']} rules bite, "
           f"{sum(len(v) for v in hit.values())} parties, no compliant party included")
+
+    # the gap is arithmetic, so it is asserted against the human "# Cost" prose:
+    # both notes read "S$2,400 a year", and Python must agree to the dollar
+    gaps = {r["path"]: [a["annual_gap"] for a in r["affected"]] for r in exp["rules"]}
+    assert gaps["rules/s-pass-qualifying-salary-2027.md"] == [2400.0], gaps
+    assert gaps["rules/ep-qualifying-salary-2027.md"] == [2400.0], gaps
+    # priced in prose, never re-derived here: an employer CPF rate and a
+    # penalty tier are not vault frontmatter, so these must stay None
+    assert gaps["rules/cpf-ow-ceiling-2026.md"] == [None], gaps
+    assert gaps["rules/cpf-senior-worker-rates-2027.md"] == [None], gaps
+    assert gaps["rules/acra-annual-return.md"] == [None], gaps
+    assert exp["annual_gap_total"] == 4800.0, exp["annual_gap_total"]
+
+    body = vault_read("rules/s-pass-qualifying-salary-2027.md")["body"]
+    assert section(body, "# Next step").startswith("List every S Pass holder")
+    assert "# Cost" not in section(body, "# Cost"), "heading line must be stripped"
+    assert section(body, "# Nonexistent") == "", "a missing section is empty, not fatal"
+    print(f"gap ok       ->  S${exp['annual_gap_total']:,.0f}/yr provable from two "
+          f"vault figures, 3 rules left to their own '# Cost' prose")
 
     print(f"what lands within 500 days of {TODAY}:")
     for rule in upcoming():

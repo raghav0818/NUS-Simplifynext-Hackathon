@@ -96,6 +96,10 @@ def offline(exp: dict) -> str:
             v = a["value"]
             versus = (f": {v} vs {r['threshold_after']} {r['unit']}"
                       if isinstance(v, (int, float)) else "")
+            # the gap is arithmetic over two vault figures, so it survives an
+            # expired token along with everything else here
+            if a.get("annual_gap"):
+                versus += f"  (S${a['annual_gap']:,.0f}/yr short)"
             lines.append(f"    who     {a['who']}{versus}")
         lines.append(f"    source  {r['resource']}")
     return "\n".join(lines)
