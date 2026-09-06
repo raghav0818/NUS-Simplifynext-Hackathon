@@ -1,0 +1,20 @@
+# Ante -- regulatory early warning for Singapore startup founders
+# python 3.13
+
+# orchestration: the two graphs (advisor, curator)
+langgraph==1.2.11
+langgraph-checkpoint==4.2.0
+langgraph-checkpoint-sqlite==3.1.1
+
+# model access: Bedrock via the LangChain integration
+langchain-aws==1.7.5
+langchain-core==1.6.2
+boto3==1.43.86
+python-dotenv==1.2.2
+
+# contracts and the vault
+pydantic==2.13.4
+PyYAML==6.0.3
+
+# fetching the .gov.sg source pages the curator checks against
+requests==2.32.4

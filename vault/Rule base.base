@@ -1,0 +1,27 @@
+filters:
+  and:
+    - type == "rule"
+views:
+  - type: table
+    name: What lands when
+    order:
+      - file.name
+      - clock
+      - effective
+      - severity
+      - applies_to
+      - threshold_after
+      - unit
+    sort:
+      - property: effective
+        direction: ASC
+  - type: table
+    name: By clock
+    order:
+      - file.name
+      - effective
+      - severity
+      - resource
+    sort:
+      - property: clock
+        direction: ASC

@@ -1,0 +1,10 @@
+env/.env
+env/*.bak
+.env
+*.env
+__pycache__/
+*.pyc
+.venv/
+state.db
+vault/.snapshots/
+vault/.history/
