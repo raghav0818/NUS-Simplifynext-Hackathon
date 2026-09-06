@@ -126,10 +126,19 @@ def gather(state: State) -> dict:
 
 
 def after_detect(state: State):
-    """The whole point of tier 1: on a quiet day this returns "log", and the
-    model is never constructed, let alone invoked."""
+    """The whole point of tier 1: on a quiet day nothing here reaches Bedrock,
+    and the model is never constructed, let alone invoked.
+
+    A quiet day still routes through `apply`, which costs nothing and is where
+    two things that must happen every day live: `checked:` advancing on the
+    rules we really did read, and an alert being raised for a page that came
+    back unverifiable or errored. Skipping straight to `log` -- as this did --
+    meant a sweep where every government page was unreachable or JS-rendered
+    printed "0 changed, 0 alerts" and read as a clean day, while the freshness
+    badge quietly went stale. A tool built to notice silence cannot be silent
+    about its own."""
     changed = [d for d in state["detected"] if d["changed"]]
-    return [Send("understand", {"found": d}) for d in changed] or "log"
+    return [Send("understand", {"found": d}) for d in changed] or "apply"
 
 
 # --------------------------------------------------------------------------
@@ -320,7 +329,7 @@ def build() -> StateGraph:
         g.add_node(name, fn)
     g.add_conditional_edges(START, fan_rules, ["detect"])
     g.add_edge("detect", "gather")
-    g.add_conditional_edges("gather", after_detect, ["understand", "log"])
+    g.add_conditional_edges("gather", after_detect, ["understand", "apply"])
     g.add_edge("understand", "verify")
     g.add_edge("verify", "apply")
     g.add_edge("apply", "log")

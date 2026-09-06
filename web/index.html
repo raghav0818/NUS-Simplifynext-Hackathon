@@ -520,10 +520,25 @@ function card(r) {
     : '<span class="badge ' + (vdays > AMBER_AFTER ? "stale" : "fresh") + '">human-verified '
       + vdays + 'd ago</span>';
 
+  /* Which threshold to show against is decided by which side the rule bites.
+     A ceiling rule bites people above the OLD figure, so showing the new one
+     printed "S$8,000 vs S$8,000" next to someone correctly flagged — they look
+     like a false positive, which is worse than showing nothing. */
   const who = r.affected.map((a) => {
-    const num = typeof a.value === "number"
-      ? money(a.value) + " vs " + money(r.threshold_after)
-      : esc(a.value) + " vs " + esc(r.threshold_after) + " " + esc(r.unit);
+    let num;
+    if (typeof a.value !== "number") {
+      // someone 54 today is in scope for a rule that bites when they are 55.
+      // Show the projection, or the row reads as a false positive.
+      num = a.age_band_on
+        ? esc(a.value) + " today → <b>" + esc(a.age_band_on) + "</b> by " + esc(r.lands)
+        : esc(a.value) + " · " + esc(r.threshold_after) + " " + esc(r.unit);
+    } else if (r.bites === "above") {
+      num = money(a.value) + " · over the old " + money(r.threshold_before);
+    } else if (r.bites === "below") {
+      num = money(a.value) + " vs " + money(r.threshold_after) + " floor";
+    } else {
+      num = money(a.value) + " vs " + money(r.threshold_after);
+    }
     return '<li><span class="name">' + esc(a.who) + "</span>"
       + '<span class="num">' + num
       + (a.annual_gap ? " · <b>" + money(a.annual_gap) + "/yr</b>" : "") + "</span></li>";

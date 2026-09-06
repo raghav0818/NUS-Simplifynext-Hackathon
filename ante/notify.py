@@ -94,8 +94,15 @@ def offline(exp: dict) -> str:
             # a year end reads as nonsense next to a threshold ("12-31 vs 7
             # months"), and the date above already carries the point.
             v = a["value"]
-            versus = (f": {v} vs {r['threshold_after']} {r['unit']}"
-                      if isinstance(v, (int, float)) else "")
+            if not isinstance(v, (int, float)):
+                versus = (f": {v} today, {a['age_band_on']} by {r['lands']}"
+                          if a.get("age_band_on") else "")
+            elif r.get("bites") == "above":
+                # a ceiling bites people over the OLD figure; printing the new
+                # one reads as "8000 vs 8000" and makes a real finding look wrong
+                versus = f": {v}, over the old {r['threshold_before']} {r['unit']}"
+            else:
+                versus = f": {v} vs {r['threshold_after']} {r['unit']}"
             # the gap is arithmetic over two vault figures, so it survives an
             # expired token along with everything else here
             if a.get("annual_gap"):

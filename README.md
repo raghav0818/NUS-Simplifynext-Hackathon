@@ -78,8 +78,9 @@ Four functions the agent eventually calls as tools, plus two extras:
 
 - `vault_search(query)` — keyword-score the rules, return **summaries only**. Search first.
 - `vault_read(path)` — one note in full: frontmatter + body.
-- `roster_scan(applies_to)` — everyone in that category, with their numbers. Or the company's
-  own figures when `applies_to: company`.
+- `roster_scan(applies_to, on=None)` — everyone in that category, with their numbers. Or the
+  company's own figures when `applies_to: company`. `on` is the date to judge them at —
+  see "an age band is a snapshot" below.
 - `vault_write(path, frontmatter, body)` — refuses anything outside `alerts/` and
   `counterparties/`, refuses path traversal (`alerts/../rules/x.md` is checked *after*
   resolving), refuses a note with no `type`.
@@ -96,6 +97,16 @@ Four functions the agent eventually calls as tools, plus two extras:
 
 `roster_scan` returns everyone in a *category*; `exposure()` returns everyone who *breaches*.
 The difference is the whole reason `bites` exists.
+
+**An age band is a snapshot, and rules bite in the future.** Someone banded `50-54` today
+who turns 55 in three weeks *is* in scope for a rule effective 1 Jan 2027 — the CPF
+senior-worker note says so itself: *"including anyone crossing 55 during 2026."* Reporting
+them only from their birthday would drop the finding for exactly as long as it is still
+cheap to act on. So `upcoming()` judges each rule's roster **on the day that rule lands**,
+and ingest records `band_changes_on` (the date they enter the next band) whenever the
+payroll gave a real date of birth. A CSV that gave only a bare age cannot be projected —
+there is no birthday to project from — so the band stands as recorded and the upload
+*says so* in `problems` rather than leaving a silent gap.
 
 **Why `annual_gap` is missing on four of the six findings.** The distance between a salary
 and the floor it must clear, times twelve, is derived from two figures the vault already
@@ -208,6 +219,23 @@ asking the model nicely. `python run.py negative` proves it — it feeds the gat
 fabricated "$9,900" quote against the real live page and asserts the rule file comes back
 byte-identical.
 
+**`python -m ante.replay` proves the same thing without a network.** The live negative test
+is the right one to run on stage and the wrong one to depend on: it needs outbound HTTPS to
+`mom.gov.sg`, so it cannot run behind a locked-down egress policy, in CI, on a plane, or on
+conference wifi. A proof you can only perform when the network agrees with you is not a
+regression test. Replay stubs exactly two things — `detect.fetch` and the model call — and
+runs everything between them for real: the region hashing, the snapshots, the LangGraph
+sweep, the five gates, the writer, and `--rollback`. Six scenarios, each asserting on the
+rule file's bytes: baseline · unchanged (0 tokens, `verified:` untouched) · a fabricated
+quote · a real quote carrying an invented number · the honest change · an unreadable page.
+
+**A quiet day still runs `apply`.** It costs nothing and it is where two things that must
+happen daily live: `checked:` advancing on the rules we really did read, and an alert for a
+page that came back unverifiable or errored. Routing a no-change day straight to `log` —
+as an earlier version did — meant a sweep where every government page was unreachable or
+JS-rendered printed *"0 changed, 0 alerts"* and read as a clean day, while the freshness
+badge quietly went stale. A tool built to notice silence cannot be silent about its own.
+
 Anything that fails a gate isn't dropped, it's **escalated**: an alert lands in `alerts/` for a
 human, and the stale snapshot is deliberately kept so tomorrow's sweep raises it again until
 someone clears it. Applied changes back up the old file into `vault/.history/` first, so
@@ -252,6 +280,7 @@ python run.py negative        # proof it cannot invent a figure
 python -m ante.notify                    # brief self-check, writes to the outbox, sends nothing
 python -m ante.ingest                    # onboarding self-check, builds a throwaway vault
 python -m ante.api                       # every free route, in-process. No AWS, no network.
+python -m ante.replay                    # the WHOLE curator on canned pages. No AWS, no network.
 python run.py brief                      # sweep, then email the founder IF something moved
 python run.py brief --force              # send regardless (the demo)
 python run.py serve                      # the board at 127.0.0.1:8000, plus /docs
