@@ -43,6 +43,9 @@ PASS_TYPES = {"citizen", "pr", "s_pass", "ep", "entrepass"}
 SECTIONS = ("# What changes", "# Who it hits", "# Cost", "# Next step", "# Citations")
 WRITABLE = ("alerts/", "counterparties/")
 
+#: Units whose shortfall is money rather than a rate or a duration.
+MONEY = {"SGD_per_month", "SGD_per_year"}
+
 
 # --------------------------------------------------------------------------
 # reading
@@ -78,14 +81,87 @@ def _rel(p):
     return p.relative_to(VAULT).as_posix()
 
 
-def _band(fm):
-    """Lower bound of an age_band like '55-59' or '65+'. 0 if absent."""
+def _band(fm, on=None):
+    """Lower bound of an age_band like '55-59' or '65+', as at date `on`.
+
+    A band is a snapshot of an age, and an age moves. A rule that takes effect
+    on 1 Jan 2027 bites whoever is in scope *then*, not whoever was in scope the
+    day their payroll was uploaded -- so someone banded '50-54' today who turns
+    55 in three weeks is in scope for a 2027 rule, and reporting them only from
+    their birthday onwards would drop the finding for exactly as long as it is
+    still cheap to act on. The CPF senior-worker note says so itself: "including
+    anyone crossing 55 during 2026".
+
+    `band_changes_on` is the date they enter the next band, written by ingest
+    when the payroll gave a real date of birth. Every band after that is another
+    five years on. Without it -- a CSV that gave a bare age, or a hand-written
+    note -- there is nothing to project from, so the band stands as recorded.
+    """
     raw = str(fm.get("age_band", "")).split("-")[0].rstrip("+")
-    return int(raw) if raw.isdigit() else 0
+    band = int(raw) if raw.isdigit() else 0
+    changes = fm.get("band_changes_on")
+    if not (band and on and changes):
+        return band
+    if isinstance(changes, str):
+        try:
+            changes = dt.date.fromisoformat(changes)
+        except ValueError:
+            return band
+    # one step per five years elapsed since that crossing
+    while changes <= on:
+        band += 5
+        # 29 Feb + 5 years is not a date; the 28th is the same birthday in law
+        try:
+            changes = changes.replace(year=changes.year + 5)
+        except ValueError:
+            changes = changes.replace(month=2, day=28, year=changes.year + 5)
+    return band
 
 
 def _company():
     return _split(VAULT / "company" / "profile.md")[0]
+
+
+def section(body: str, heading: str) -> str:
+    """One '# Heading' section of a note body, heading line stripped.
+
+    The rule notes' prose is human-owned and the UI quotes it rather than
+    paraphrasing -- '# Cost' priced by a person and '# Next step' written by one
+    are the two the founder actually acts on. Empty string when absent, because a
+    missing section is a rendering gap, not a reason to fail a request.
+    """
+    out, taking = [], False
+    for line in (body or "").splitlines():
+        if line.startswith("# "):
+            taking = line.strip() == heading
+            continue
+        if taking:
+            out.append(line)
+    return "\n".join(out).strip()
+
+
+def _gap(value, fm) -> float | None:
+    """Annualised shortfall against a floor, or None when it is not arithmetic.
+
+    Only `bites: below` on a money unit qualifies: the distance between a salary
+    and the floor it must clear, times twelve, is derived from two figures the
+    vault already holds and nothing else. The rules' own '# Cost' sections agree
+    with it to the dollar -- S Pass and EP both read "S$2,400 a year".
+
+    Everything else is deliberately None. An employer CPF rate or a late-filing
+    penalty tier is not in the vault's frontmatter, and re-deriving one here
+    would be inventing a figure -- the one thing this codebase does not do. Those
+    rules carry their price in the human-written '# Cost' prose instead, and the
+    UI quotes that.
+    """
+    if fm.get("bites") != "below" or fm.get("unit") not in MONEY:
+        return None
+    if not isinstance(value, (int, float)) or isinstance(value, bool):
+        return None
+    short = fm["threshold_after"] - value
+    if short <= 0:
+        return None
+    return round(short * (12 if fm["unit"] == "SGD_per_month" else 1), 2)
 
 
 def _fye():
@@ -145,12 +221,18 @@ def vault_read(path: str) -> dict:
     return {"path": _rel(p), "frontmatter": fm, "body": body}
 
 
-def roster_scan(applies_to: str) -> dict:
+def roster_scan(applies_to: str, on=None) -> dict:
     """Who does a rule's applies_to actually hit?
 
     Pass the applies_to value straight from a rule's frontmatter. Returns the
     matching people with their salary and pass details, or the company profile
     when the rule applies to the company rather than to staff.
+
+    `on` is the date to judge them at -- the day the rule bites, which upcoming()
+    supplies. It only changes anything for the age-banded categories, where a
+    rule landing next year hits whoever will be old enough by then. It defaults
+    to today, so a bare tool call from the model still asks the obvious
+    question.
     """
     if applies_to == "company":
         fm = _company()
@@ -159,23 +241,26 @@ def roster_scan(applies_to: str) -> dict:
     if test is None:
         return {"error": f"unknown applies_to '{applies_to}'; "
                          f"expected one of {sorted(MATCH) + ['company']}"}
+    on = on or TODAY
     people = []
     for p in _notes("people"):
         fm, _ = _split(p)
-        if test(fm):
+        if test(fm, on):
             people.append({"path": _rel(p), **{k: fm.get(k) for k in (
                 "title", "role", "pass_type", "monthly_salary",
-                "pass_expiry", "age_band")}})
-    return {"applies_to": applies_to, "matched": len(people), "people": people}
+                "pass_expiry", "age_band")},
+                "age_band_on": f"{_band(fm, on)}-{_band(fm, on) + 4}"})
+    return {"applies_to": applies_to, "matched": len(people), "people": people,
+            "as_at": str(on)}
 
 
 MATCH = {
-    "s_pass_holder":     lambda fm: fm.get("pass_type") == "s_pass",
-    "ep_holder":         lambda fm: fm.get("pass_type") == "ep",
-    "entrepass_holder":  lambda fm: fm.get("pass_type") == "entrepass",
-    "all_employees":     lambda fm: True,
-    "employees_over_55": lambda fm: _band(fm) >= 55,
-    "employees_over_60": lambda fm: _band(fm) >= 60,
+    "s_pass_holder":     lambda fm, on: fm.get("pass_type") == "s_pass",
+    "ep_holder":         lambda fm, on: fm.get("pass_type") == "ep",
+    "entrepass_holder":  lambda fm, on: fm.get("pass_type") == "entrepass",
+    "all_employees":     lambda fm, on: True,
+    "employees_over_55": lambda fm, on: _band(fm, on) >= 55,
+    "employees_over_60": lambda fm, on: _band(fm, on) >= 60,
 }
 
 
@@ -311,7 +396,10 @@ def upcoming(horizon_days=500, lookback_days=400) -> list:
         lands = _lands_on(fm)
         if lands and not (-lookback_days <= (lands - TODAY).days <= horizon_days):
             continue
-        hit = roster_scan(fm["applies_to"])
+        # judged on the day it bites: a 2027 rule hits whoever is in scope in
+        # 2027. A rule already in force is judged today, not retrospectively --
+        # nobody gets to age backwards out of an obligation.
+        hit = roster_scan(fm["applies_to"], on=max(lands, TODAY) if lands else TODAY)
         subjects = hit.get("people") or ([hit["company"]] if "company" in hit else [])
         out.append({
             "path": _rel(p),
@@ -325,8 +413,15 @@ def upcoming(horizon_days=500, lookback_days=400) -> list:
             "threshold_after": fm.get("threshold_after"),
             "unit": fm.get("unit"),
             "resource": fm.get("resource"),
+            # age_band_on rides along where it differs from the band recorded
+            # today, so a card can say WHY someone banded 50-54 is in scope for
+            # a rule about the over-55s instead of looking like a false positive
             "subjects": [{"who": s.get("title"),
-                          "value": s.get(fm["trigger_field"])} for s in subjects],
+                          "value": s.get(fm["trigger_field"]),
+                          **({"age_band_on": s["age_band_on"]}
+                             if s.get("age_band_on") not in (None, s.get("age_band"))
+                             else {})}
+                         for s in subjects],
         })
     out.sort(key=lambda r: (r["days_until"] is None, r["days_until"] or 0))
     return out
@@ -340,13 +435,19 @@ def exposure() -> dict:
     non-compliance is arithmetic, so it is done here rather than by a model that
     has to re-derive it from prose on every run -- the same split the curator
     uses, where the model describes and Python decides.
+
+    Each affected party carries `annual_gap` where the shortfall is arithmetic
+    (see _gap) and None where it is not, so a caller can total what is provably
+    known and quote the rule's '# Cost' prose for the rest.
     """
-    out = []
+    out, total = [], 0.0
     for rule in upcoming():
         fm, _ = _split(VAULT / rule["path"])
         test = BITES[fm["bites"]]
-        hit = [s for s in rule["subjects"] if test(s["value"], fm)]
+        hit = [{**s, "annual_gap": _gap(s["value"], fm)}
+               for s in rule["subjects"] if test(s["value"], fm)]
         if hit:
+            total += sum(a["annual_gap"] or 0 for a in hit)
             out.append({**{k: rule[k] for k in
                            ("path", "title", "clock", "lands", "days_until",
                             "in_force", "severity", "trigger_field",
@@ -354,7 +455,10 @@ def exposure() -> dict:
                         "bites": fm["bites"],
                         "threshold_before": fm.get("threshold_before"),
                         "affected": hit})
-    return {"rules_with_exposure": len(out), "rules": out}
+    # only the provable half: rules priced in prose are not in this number, and
+    # the UI says so rather than presenting it as the whole bill
+    return {"rules_with_exposure": len(out), "rules": out,
+            "annual_gap_total": round(total, 2)}
 
 
 # --------------------------------------------------------------------------
@@ -398,6 +502,43 @@ if __name__ == "__main__":
     assert all(len(v) == 1 for v in hit.values()), hit
     print(f"exposure ok  ->  {exp['rules_with_exposure']} rules bite, "
           f"{sum(len(v) for v in hit.values())} parties, no compliant party included")
+
+    # the gap is arithmetic, so it is asserted against the human "# Cost" prose:
+    # both notes read "S$2,400 a year", and Python must agree to the dollar
+    gaps = {r["path"]: [a["annual_gap"] for a in r["affected"]] for r in exp["rules"]}
+    assert gaps["rules/s-pass-qualifying-salary-2027.md"] == [2400.0], gaps
+    assert gaps["rules/ep-qualifying-salary-2027.md"] == [2400.0], gaps
+    # priced in prose, never re-derived here: an employer CPF rate and a
+    # penalty tier are not vault frontmatter, so these must stay None
+    assert gaps["rules/cpf-ow-ceiling-2026.md"] == [None], gaps
+    assert gaps["rules/cpf-senior-worker-rates-2027.md"] == [None], gaps
+    assert gaps["rules/acra-annual-return.md"] == [None], gaps
+    assert exp["annual_gap_total"] == 4800.0, exp["annual_gap_total"]
+
+    # a band is a snapshot; rules bite in the future. Someone 54 today who turns
+    # 55 on 2026-11-14 is in scope for a rule effective 2027-01-01, and each
+    # further five years moves them another band.
+    crossing = {"age_band": "50-54", "band_changes_on": "2026-11-14"}
+    assert _band(crossing) == 50, "with no date, the band stands as recorded"
+    assert _band(crossing, dt.date(2026, 11, 13)) == 50, "not until the birthday"
+    assert _band(crossing, dt.date(2026, 11, 14)) == 55, "on the day it changes"
+    assert _band(crossing, dt.date(2027, 1, 1)) == 55, "the rule's effective date"
+    assert _band(crossing, dt.date(2031, 11, 14)) == 60, "five years on again"
+    assert _band({"age_band": "50-54"}, dt.date(2099, 1, 1)) == 50, \
+        "no band_changes_on means nothing to project from -- never guess"
+    assert MATCH["employees_over_55"](crossing, dt.date(2027, 1, 1)), \
+        "the CPF senior rule must see whoever will be 55 when it bites"
+    assert not MATCH["employees_over_55"](crossing, TODAY), \
+        "and must not claim they are 55 today"
+    print("age ok       ->  bands projected to the date a rule bites, "
+          "never past a date the vault does not have")
+
+    body = vault_read("rules/s-pass-qualifying-salary-2027.md")["body"]
+    assert section(body, "# Next step").startswith("List every S Pass holder")
+    assert "# Cost" not in section(body, "# Cost"), "heading line must be stripped"
+    assert section(body, "# Nonexistent") == "", "a missing section is empty, not fatal"
+    print(f"gap ok       ->  S${exp['annual_gap_total']:,.0f}/yr provable from two "
+          f"vault figures, 3 rules left to their own '# Cost' prose")
 
     print(f"what lands within 500 days of {TODAY}:")
     for rule in upcoming():

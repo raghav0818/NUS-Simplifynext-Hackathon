@@ -1,0 +1,54 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@600;700;800&family=Lora:ital,wght@0,400;0,500;1,400&family=IBM+Plex+Mono:wght@400;500&display=swap">
+  <style>
+    body { margin: 0; }
+    * { box-sizing: border-box; }
+    a { color: inherit; text-decoration: none; }
+    a:hover { opacity: .7; }
+    .d { font-family: Poppins, "Helvetica Neue", Arial, sans-serif; }
+    .s { font-family: Lora, Georgia, "Times New Roman", serif; }
+    .m { font-family: "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace; }
+  </style>
+</helmet>
+<div style="width: 1440px; height: 870px; background: #ffffff; padding: 96px 140px;">
+  <div class="m" style="color: #7c868f; font-size: 12px; letter-spacing: .22em; margin-bottom: 30px;">WHERE THE AI IS</div>
+  <h2 class="d" style="margin: 0 0 20px; color: #16191b; font-size: 58px; font-weight: 800; letter-spacing: -.022em; line-height: 1.03;">TWO CALLS. BOTH FENCED.</h2>
+  <p class="s" style="margin: 0 0 58px; color: #5c666d; font-size: 20px; line-height: 1.55; max-width: 700px;">Roughly 3,700 lines of code, and a model is invoked in exactly two of them. That is the design, not an omission.</p>
+
+  <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 80px;">
+
+    <div style="display: flex; flex-direction: column; gap: 30px;">
+      <div style="border-top: 3px solid #16191b; padding-top: 22px;">
+        <div class="d" style="color: #16191b; font-size: 24px; font-weight: 700; margin-bottom: 10px;">Reading a government page</div>
+        <p class="s" style="margin: 0; color: #5c666d; font-size: 17px; line-height: 1.6;">The model is handed the old page and today&rsquo;s, and reports what moved. It has <strong style="color:#16191b;">no tools</strong> &mdash; it cannot fetch, write, or act. Then Python re-checks every word of it.</p>
+      </div>
+      <div style="border-top: 3px solid #16191b; padding-top: 22px;">
+        <div class="d" style="color: #16191b; font-size: 24px; font-weight: 700; margin-bottom: 10px;">Explaining it to you</div>
+        <p class="s" style="margin: 0; color: #5c666d; font-size: 17px; line-height: 1.6;">Who is affected was already settled in Python before the model speaks. Its job is to explain and prioritise &mdash; never to decide who is on the list.</p>
+      </div>
+    </div>
+
+    <div>
+      <div class="m" style="color: #7c868f; font-size: 11.5px; letter-spacing: .2em; margin-bottom: 24px;">DELIBERATELY NOT AI</div>
+      <div style="display: flex; flex-direction: column;">
+        <div style="display: flex; justify-content: space-between; gap: 24px; padding: 15px 0; border-bottom: 1px solid #e4e8ea;"><span class="s" style="color:#16191b; font-size: 17px;">Who is non-compliant</span><span class="m" style="color:#7c868f; font-size: 13.5px; text-align: right;">arithmetic</span></div>
+        <div style="display: flex; justify-content: space-between; gap: 24px; padding: 15px 0; border-bottom: 1px solid #e4e8ea;"><span class="s" style="color:#16191b; font-size: 17px;">Which column is the salary</span><span class="m" style="color:#7c868f; font-size: 13.5px; text-align: right;">alias table</span></div>
+        <div style="display: flex; justify-content: space-between; gap: 24px; padding: 15px 0; border-bottom: 1px solid #e4e8ea;"><span class="s" style="color:#16191b; font-size: 17px;">Whether a page changed</span><span class="m" style="color:#7c868f; font-size: 13.5px; text-align: right;">a hash</span></div>
+        <div style="display: flex; justify-content: space-between; gap: 24px; padding: 15px 0; border-bottom: 1px solid #e4e8ea;"><span class="s" style="color:#16191b; font-size: 17px;">Whether to write a figure</span><span class="m" style="color:#7c868f; font-size: 13.5px; text-align: right;">five gates</span></div>
+        <div style="display: flex; justify-content: space-between; gap: 24px; padding: 15px 0; border-bottom: 1px solid #e4e8ea;"><span class="s" style="color:#16191b; font-size: 17px;">What the shortfall costs</span><span class="m" style="color:#7c868f; font-size: 13.5px; text-align: right;">multiplication</span></div>
+      </div>
+      <p class="s" style="margin: 28px 0 0; color: #5c666d; font-size: 16.5px; line-height: 1.6; font-style: italic;">We tried letting the model decide who was affected. It returned six findings, then five, then three. Arithmetic must not vary between runs.</p>
+    </div>
+  </div>
+</div>
+</x-dc>
+</body>
+</html>

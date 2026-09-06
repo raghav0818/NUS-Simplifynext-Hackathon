@@ -1,0 +1,717 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ante — the Runway Board</title>
+<!-- inline, because a favicon fetched from anywhere else is a request this page
+     promises not to make -->
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23b42318'/%3E%3Cpath d='M9 23L16 8l7 15' stroke='white' stroke-width='2.6' fill='none' stroke-linejoin='round'/%3E%3C/svg%3E">
+<!--
+  The founder's whole product surface, in one file.
+
+  No build step, no npm, no CDN, no framework. Three reasons, all of them the
+  same reason: this page is served off 127.0.0.1 by `python run.py serve`, it has
+  to render on conference wifi with the network unplugged, and a demo that needs
+  `npm install` to start is a demo that does not start.
+
+  It reads four free endpoints (findings, rules, alerts, health) — all pure
+  Python, no AWS — so the board is on screen before the advisor has been asked
+  anything, and stays on screen when the SSO token has expired. The only call
+  that needs credentials is the chat sidebar, and its failure is a message in
+  one panel rather than an empty page.
+-->
+<style>
+  /* Light first, dark by preference. Every colour is a token so the two themes
+     cannot drift; nothing gets its only definition inside the media query. */
+  :root {
+    --bg:        #f6f6f4;
+    --panel:     #ffffff;
+    --panel-2:   #fbfbfa;
+    --ink:       #17171a;
+    --ink-2:     #55555f;
+    --ink-3:     #86868f;
+    --line:      #e3e3df;
+    --line-2:    #d0d0ca;
+    --accent:    #1c4ed8;
+    --red:       #b42318;
+    --red-bg:    #fef3f2;
+    --amber:     #a15c07;
+    --amber-bg:  #fffaeb;
+    --green:     #067647;
+    --green-bg:  #ecfdf3;
+    --law:       #6941c6;
+    --growth:    #067647;
+    --recurring: #b54708;
+    --shadow:    0 1px 2px rgba(16,24,40,.06), 0 1px 3px rgba(16,24,40,.10);
+    --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Inter,
+            "Helvetica Neue", Arial, sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg:       #0e0e11;
+      --panel:    #17171b;
+      --panel-2:  #1d1d22;
+      --ink:      #f0f0ee;
+      --ink-2:    #a8a8b3;
+      --ink-3:    #74747f;
+      --line:     #2a2a31;
+      --line-2:   #3a3a43;
+      --accent:   #7f9cf5;
+      --red:      #f97066;
+      --red-bg:   #2d1513;
+      --amber:    #fdb022;
+      --amber-bg: #2b1f08;
+      --green:    #47cd89;
+      --green-bg: #0d2a1c;
+      --law:      #b391f9;
+      --growth:   #47cd89;
+      --recurring:#f79009;
+      --shadow:   0 1px 2px rgba(0,0,0,.4);
+    }
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--ink);
+    font: 15px/1.5 var(--sans);
+    -webkit-font-smoothing: antialiased;
+  }
+  a { color: var(--accent); }
+  button {
+    font: inherit; color: inherit; cursor: pointer;
+    background: var(--panel); border: 1px solid var(--line-2);
+    border-radius: 7px; padding: 7px 12px;
+  }
+  button:hover { background: var(--panel-2); border-color: var(--ink-3); }
+  button:active { transform: translateY(1px); }
+  .wrap { max-width: 1500px; margin: 0 auto; padding: 0 24px 80px; }
+
+  /* ---------- header ---------- */
+  header {
+    border-bottom: 1px solid var(--line); background: var(--panel);
+    position: sticky; top: 0; z-index: 20;
+  }
+  .head-in {
+    max-width: 1500px; margin: 0 auto; padding: 16px 24px;
+    display: flex; gap: 24px; align-items: flex-start; flex-wrap: wrap;
+  }
+  .brand { font-size: 20px; font-weight: 680; letter-spacing: -.02em; }
+  .brand span { color: var(--ink-3); font-weight: 400; }
+  .tagline { color: var(--ink-2); font-size: 13px; margin-top: 2px; }
+  .privacy {
+    margin-top: 8px; font-size: 12px; color: var(--green);
+    background: var(--green-bg); border: 1px solid var(--green);
+    border-radius: 999px; padding: 3px 10px; display: inline-block;
+  }
+  .head-right { margin-left: auto; text-align: right; }
+
+  /* The bill, not the compliance list. Largest text on the page. */
+  .bill { font-size: 40px; font-weight: 700; letter-spacing: -.03em; line-height: 1.05; }
+  .bill.none { color: var(--green); }
+  .bill-sub {
+    color: var(--ink-2); font-size: 13px; margin-top: 4px;
+    max-width: 46ch; margin-left: auto; text-align: left;
+  }
+
+  .pills { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 10px; justify-content: flex-end; }
+  .pill {
+    font-size: 11.5px; font-family: var(--mono); padding: 3px 9px;
+    border-radius: 999px; border: 1px solid var(--line-2); color: var(--ink-2);
+    background: var(--panel-2); white-space: nowrap;
+  }
+  .pill.ok   { color: var(--green); border-color: var(--green); background: var(--green-bg); }
+  .pill.warn { color: var(--amber); border-color: var(--amber); background: var(--amber-bg); }
+  .pill.bad  { color: var(--red);   border-color: var(--red);   background: var(--red-bg); }
+
+  /* ---------- timeline ---------- */
+  .timeline {
+    margin: 22px 0 6px; background: var(--panel); border: 1px solid var(--line);
+    border-radius: 12px; padding: 16px 20px 12px; box-shadow: var(--shadow);
+  }
+  .tl-head { display: flex; align-items: baseline; gap: 12px; margin-bottom: 14px; }
+  .tl-title { font-weight: 620; font-size: 14px; }
+  .tl-note { color: var(--ink-3); font-size: 12px; }
+  .tl-track {
+    position: relative; height: 74px;
+    border-top: 1px solid var(--line); border-bottom: 1px solid var(--line);
+  }
+  /* left of today = already in force and unbudgeted. The expensive category a
+     calendar structurally cannot show, so it gets its own ground. */
+  .tl-past { position: absolute; inset: 0 auto 0 0; background: var(--red-bg); }
+  .tl-today { position: absolute; top: -6px; bottom: -6px; width: 2px; background: var(--red); }
+  .tl-today::after {
+    content: "today"; position: absolute; top: -16px; left: 50%;
+    transform: translateX(-50%); font-size: 10.5px; color: var(--red);
+    font-family: var(--mono); white-space: nowrap;
+  }
+  .tl-dot {
+    position: absolute; width: 11px; height: 11px; border-radius: 50%;
+    transform: translate(-50%, -50%); border: 2px solid var(--panel); cursor: pointer;
+  }
+  .tl-dot:hover { outline: 2px solid var(--ink-3); }
+  .tl-label {
+    position: absolute; transform: translateX(-50%); font-size: 10.5px;
+    font-family: var(--mono); color: var(--ink-3); white-space: nowrap;
+  }
+
+  /* ---------- board ---------- */
+  .cols { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-top: 18px; }
+  @media (max-width: 1080px) { .cols { grid-template-columns: 1fr; } }
+  .col-head {
+    display: flex; align-items: baseline; gap: 8px; padding: 0 2px 8px;
+    border-bottom: 2px solid var(--line); margin-bottom: 12px;
+  }
+  .col-name { font-weight: 660; font-size: 15px; }
+  .col-why { color: var(--ink-3); font-size: 12px; }
+  .col-n { margin-left: auto; color: var(--ink-3); font-family: var(--mono); font-size: 12px; }
+  .clock-law       .col-name, .clock-law .dot       { color: var(--law); }
+  .clock-growth    .col-name, .clock-growth .dot    { color: var(--growth); }
+  .clock-recurring .col-name, .clock-recurring .dot { color: var(--recurring); }
+
+  .card {
+    background: var(--panel); border: 1px solid var(--line); border-radius: 12px;
+    padding: 14px 16px; margin-bottom: 12px; box-shadow: var(--shadow);
+  }
+  .card.in-force { border-left: 3px solid var(--red); }
+  .card h3 { margin: 0 0 8px; font-size: 14.5px; font-weight: 620; line-height: 1.35; }
+  .money { font-size: 30px; font-weight: 700; letter-spacing: -.02em; line-height: 1.1; }
+  .money.prose { font-size: 15px; font-weight: 560; color: var(--ink-2); letter-spacing: 0; }
+  .money-sub { color: var(--ink-3); font-size: 11.5px; font-family: var(--mono); margin-top: 2px; }
+
+  .who { margin: 10px 0 0; padding: 0; list-style: none; }
+  .who li {
+    display: flex; gap: 8px; align-items: baseline; padding: 5px 0;
+    border-top: 1px dashed var(--line); font-size: 13px;
+  }
+  .who .name { font-weight: 580; }
+  .who .num { margin-left: auto; font-family: var(--mono); font-size: 12px; color: var(--ink-2); }
+
+  .meta { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; margin-top: 11px; }
+  .badge {
+    font-family: var(--mono); font-size: 11px; padding: 2px 7px; border-radius: 5px;
+    border: 1px solid var(--line-2); color: var(--ink-2); background: var(--panel-2);
+  }
+  .badge.late  { color: var(--red);   border-color: var(--red);   background: var(--red-bg); font-weight: 600; }
+  .badge.soon  { color: var(--amber); border-color: var(--amber); background: var(--amber-bg); }
+  .badge.fresh { color: var(--green); border-color: var(--green); background: var(--green-bg); }
+  .badge.stale { color: var(--amber); border-color: var(--amber); background: var(--amber-bg); }
+
+  .src { font-size: 12px; margin-top: 9px; word-break: break-all; }
+  .src::before { content: "🔗 "; }
+
+  details.more { margin-top: 10px; }
+  details.more summary {
+    cursor: pointer; font-size: 12.5px; color: var(--accent); list-style: none;
+  }
+  details.more summary::-webkit-details-marker { display: none; }
+  details.more summary::before { content: "▸ "; }
+  details.more[open] summary::before { content: "▾ "; }
+  .prose-block {
+    margin-top: 9px; padding: 10px 12px; background: var(--panel-2);
+    border-left: 2px solid var(--line-2); border-radius: 0 7px 7px 0;
+    font-size: 12.5px; color: var(--ink-2); white-space: pre-wrap;
+    max-height: 260px; overflow: auto;
+  }
+  .prose-block b { color: var(--ink); }
+  .prose-block table { border-collapse: collapse; margin: 6px 0; width: 100%; }
+  .prose-block th, .prose-block td {
+    border: 1px solid var(--line-2); padding: 4px 8px; text-align: left; vertical-align: top;
+  }
+  .prose-block th { background: var(--bg); font-weight: 620; color: var(--ink); }
+  .prose-label {
+    font-family: var(--mono); font-size: 10.5px; text-transform: uppercase;
+    letter-spacing: .06em; color: var(--ink-3); margin-top: 10px;
+  }
+
+  /* ---------- lower panels ---------- */
+  .lower { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 26px; }
+  @media (max-width: 1080px) { .lower { grid-template-columns: 1fr; } }
+  .panel {
+    background: var(--panel); border: 1px solid var(--line); border-radius: 12px;
+    padding: 16px 18px; box-shadow: var(--shadow);
+  }
+  .panel h2 { margin: 0 0 4px; font-size: 15px; font-weight: 640; }
+  .panel .sub { color: var(--ink-3); font-size: 12.5px; margin-bottom: 12px; }
+  .refusal {
+    border: 1px solid var(--amber); background: var(--amber-bg); border-radius: 9px;
+    padding: 10px 12px; margin-bottom: 9px; font-size: 12.5px;
+  }
+  .refusal .rtitle { font-weight: 620; color: var(--amber); font-family: var(--mono); font-size: 11.5px; }
+
+  .rule-row {
+    display: flex; gap: 10px; align-items: center; padding: 8px 0;
+    border-top: 1px solid var(--line); font-size: 13px;
+  }
+  .rule-row:first-child { border-top: none; }
+  .rule-row .rn { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+  /* ---------- chat ---------- */
+  .ask-row { display: flex; gap: 8px; }
+  .ask-row input {
+    flex: 1; font: inherit; padding: 9px 12px; border-radius: 8px;
+    border: 1px solid var(--line-2); background: var(--panel-2); color: var(--ink);
+  }
+  .ask-row input:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
+  .answer {
+    margin-top: 12px; font-size: 13px; white-space: pre-wrap;
+    max-height: 420px; overflow: auto; line-height: 1.55;
+  }
+  .answer table { border-collapse: collapse; font-size: 12px; }
+  .steps {
+    font-family: var(--mono); font-size: 11.5px; color: var(--ink-3);
+    margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--line);
+  }
+
+  .empty { text-align: center; padding: 46px 20px; color: var(--ink-2); }
+  .empty .big { font-size: 19px; color: var(--green); font-weight: 620; }
+  .muted { color: var(--ink-3); }
+  .mono { font-family: var(--mono); }
+  .toast {
+    position: fixed; bottom: 22px; left: 50%; transform: translateX(-50%);
+    background: var(--ink); color: var(--bg); padding: 10px 18px; border-radius: 9px;
+    font-size: 13px; z-index: 60; box-shadow: var(--shadow);
+  }
+  .spin { display: inline-block; animation: sp 1s linear infinite; }
+  @keyframes sp { to { transform: rotate(360deg); } }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="head-in">
+    <div>
+      <div class="brand">Ante <span>· regulatory early warning</span></div>
+      <div class="tagline" id="company">reading the vault…</div>
+      <div class="privacy">Your payroll never leaves your laptop. The only thing Ante uploads is the law.</div>
+    </div>
+    <div class="head-right">
+      <div class="bill" id="bill">—</div>
+      <div class="bill-sub" id="bill-sub"></div>
+      <div class="pills" id="pills"></div>
+    </div>
+  </div>
+</header>
+
+<div class="wrap">
+  <div class="timeline" id="timeline" hidden>
+    <div class="tl-head">
+      <span class="tl-title">18 months</span>
+      <span class="tl-note">Anything left of the line is already in force and unbudgeted — the category a calendar cannot show.</span>
+    </div>
+    <div class="tl-track" id="tl-track"></div>
+  </div>
+
+  <div class="cols" id="board">
+    <div class="empty" style="grid-column:1/-1"><span class="spin">◐</span> loading the board…</div>
+  </div>
+
+  <div class="lower">
+    <div class="panel">
+      <h2>Ask Ante</h2>
+      <div class="sub">The drill-down, not the front door. The board above is already
+        correct and cost nothing; this spends ~17k tokens to explain it.</div>
+      <div class="ask-row">
+        <input id="q" placeholder="what changes for us in the next 90 days?"
+               value="what changes for us in the next 90 days?">
+        <button id="ask">Ask</button>
+      </div>
+      <div class="answer" id="answer"></div>
+      <div class="steps" id="steps"></div>
+    </div>
+
+    <div>
+      <div class="panel" style="margin-bottom:16px">
+        <h2>What Ante refused to do</h2>
+        <div class="sub">A bot that declines to write an unverified figure is worth
+          more than one that is never wrong. Straight from <span class="mono">alerts/</span>.</div>
+        <div id="refusals"></div>
+      </div>
+      <div class="panel">
+        <h2>Freshness</h2>
+        <div class="sub">A person read the page, or only the machine did. Ante does
+          not let the second pass for the first.</div>
+        <div id="freshness"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+"use strict";
+
+// --------------------------------------------------------------------------
+// data
+// --------------------------------------------------------------------------
+
+const CLOCKS = [
+  ["law",       "Law moved",     "the rule changed under you"],
+  ["growth",    "You grew",      "same rule, you crossed into it"],
+  ["recurring", "Date arriving", "neither moved, the calendar did"],
+];
+const AMBER_AFTER = 90;          // a human re-read older than this is worth flagging
+const state = { findings: null, rules: {}, alerts: null, health: null };
+
+const get = (u) => fetch(u).then((r) => r.json());
+const money = (n) => "S$" + Number(n).toLocaleString("en-SG", { maximumFractionDigits: 0 });
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) =>
+  ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+
+/* The vault's prose is markdown written by a person, and it is QUOTED here, not
+   re-rendered: everything is escaped first, and the only markup allowed back in
+   is **bold**. A rule note can never inject markup into the page that quotes it.
+
+   The notes are hard-wrapped at about 90 characters for readable git diffs, so
+   the newlines inside a paragraph are the author's line breaks, not their
+   intent. Joining them lets the card wrap to its own width instead of showing
+   ragged mid-sentence breaks; blank lines still separate paragraphs, and
+   anything that is a table row, a list item or a heading keeps its own lines. */
+function prose(s) {
+  if (!s) return "";
+  const kept = /^\s*([|\-*#>]|\d+\.)/;      // table, list, heading, quote
+  return esc(s).split(/\n\s*\n/)
+    .map((block) => {
+      const lines = block.split("\n").filter((l) => l.trim());
+      // ACRA prices itself as a penalty table, and the tiers ARE the cost -- a
+      // wall of pipe characters is the one place a founder actually needs to
+      // read a grid
+      if (lines.length > 1 && lines.every((l) => l.trim().startsWith("|"))) return grid(lines);
+      return lines.some((l) => kept.test(l)) ? block : lines.join(" ").trim();
+    })
+    .join("\n\n")
+    // [\s\S] rather than . -- the bold in "up to **S$102 a month, or\nS$1,224 a
+    // year**" straddles one of those hard wraps, and a dot would not cross it
+    .replace(/\*\*([\s\S]+?)\*\*/g, "<b>$1</b>");
+}
+
+/* A markdown pipe table -> a real one. Called only from prose(), so the text is
+   already escaped and these cells cannot carry markup. */
+function grid(lines) {
+  const rows = lines
+    .filter((l) => !/^\|[\s:|-]+\|$/.test(l.trim()))     // drop the |---|---| rule
+    .map((l) => l.trim().replace(/^\||\|$/g, "").split("|").map((c) => c.trim()));
+  if (!rows.length) return lines.join("\n");
+  const cell = (t, r) => "<" + t + ">" + r.join("</" + t + "><" + t + ">") + "</" + t + ">";
+  return "<table><thead><tr>" + cell("th", rows[0]) + "</tr></thead><tbody>"
+    + rows.slice(1).map((r) => "<tr>" + cell("td", r) + "</tr>").join("")
+    + "</tbody></table>";
+}
+
+function toast(msg) {
+  const t = document.createElement("div");
+  t.className = "toast";
+  t.textContent = msg;
+  document.body.appendChild(t);
+  setTimeout(() => t.remove(), 2600);
+}
+
+// --------------------------------------------------------------------------
+// header
+// --------------------------------------------------------------------------
+
+function renderHead() {
+  const f = state.findings, h = state.health;
+  document.getElementById("company").textContent =
+    (f.company || "this company") + " · " + f.parties + " findings as of " + f.as_of;
+
+  const bill = document.getElementById("bill");
+  const sub = document.getElementById("bill-sub");
+  if (f.parties === 0) {
+    bill.textContent = "Nothing bites";
+    bill.classList.add("none");
+    sub.textContent = "No rule in the base is breached today.";
+  } else {
+    // only the half that is arithmetic over two vault figures. The rest is
+    // priced in each rule's human-written "# Cost" note, and says so.
+    bill.textContent = f.annual_gap_total > 0 ? money(f.annual_gap_total) + "/yr" : f.parties + " findings";
+    sub.innerHTML = f.annual_gap_total > 0
+      ? "of unbudgeted salary-floor gap, computed from your own payroll. "
+        + "<b>" + f.priced_in_prose + " further findings</b> are priced in their rule's cost note — open a card."
+      : "across " + f.rules_with_exposure + " rules. Each is priced in its own cost note — open a card.";
+  }
+
+  const pills = [];
+  if (h) {
+    pills.push(h.problems.length
+      ? ['bad', h.problems.length + " vault problems"]
+      : ['ok', "vault ok · " + h.rules + " rules · " + h.people + " people"]);
+    pills.push(h.bedrock.alive ? ['ok', "bedrock live"] : ['warn', "bedrock: " + h.bedrock.detail]);
+    if (h.last_sweep) pills.push(['', "last sweep " + h.last_sweep.split(" curator:")[0]]);
+    if (h.overdue_human_review.length)
+      pills.push(['warn', h.overdue_human_review.length + " overdue human re-read"]);
+  }
+  document.getElementById("pills").innerHTML = pills
+    .map(([k, t]) => '<span class="pill ' + k + '">' + esc(t) + "</span>").join("");
+}
+
+// --------------------------------------------------------------------------
+// timeline -- upcoming() already returns negative days_until, so this is a
+// rendering job, not a logic one
+// --------------------------------------------------------------------------
+
+function renderTimeline() {
+  const dated = state.findings.rules.filter((r) => r.days_until !== null);
+  if (!dated.length) return;
+  document.getElementById("timeline").hidden = false;
+
+  const days = dated.map((r) => r.days_until);
+  const lo = Math.min(-30, ...days) - 40;
+  const hi = Math.max(120, ...days) + 40;
+  const pct = (d) => ((d - lo) / (hi - lo)) * 100;
+
+  const track = document.getElementById("tl-track");
+  let html = '<div class="tl-past" style="width:' + pct(0).toFixed(2) + '%"></div>'
+           + '<div class="tl-today" style="left:' + pct(0).toFixed(2) + '%"></div>';
+
+  // Rules that land on the SAME day -- three do, on 1 Jan 2027 -- would draw one
+  // dot on top of another and print their labels twice in the same place. Group
+  // by date first, so one marker carries the count and every title is in its
+  // tooltip. The three clocks genuinely converge, and the strip should show that
+  // rather than hide two findings under a third.
+  const byDay = new Map();
+  dated.forEach((r) => {
+    if (!byDay.has(r.days_until)) byDay.set(r.days_until, []);
+    byDay.get(r.days_until).push(r);
+  });
+
+  [...byDay.entries()].sort((a, b) => a[0] - b[0]).forEach(([d, rs], i) => {
+    const x = pct(d).toFixed(2);
+    const y = i % 2 ? 62 : 30;             // alternate rows so near dates clear each other
+    const late = rs[0].in_force;
+    const colour = late ? "var(--red)" : "var(--" + rs[0].clock + ")";
+    const size = rs.length > 1 ? "width:15px;height:15px" : "";
+    html += '<div class="tl-dot" style="left:' + x + '%;top:' + y + '%;background:'
+          + colour + ";" + size + '" title="' + esc(rs.map((r) => r.title).join(" · "))
+          + '" onclick="jump(\'' + esc(rs[0].path) + '\')"></div>'
+          + '<div class="tl-label" style="left:' + x + '%;top:' + (y + 10) + '%;'
+          + (late ? "color:var(--red);font-weight:600" : "") + '">'
+          + (late ? d + "d" : "+" + d + "d")
+          + (rs.length > 1 ? " ×" + rs.length : "") + "</div>";
+  });
+  track.innerHTML = html;
+}
+
+function jump(path) {
+  const el = document.getElementById("card-" + path);
+  if (!el) return;
+  el.scrollIntoView({ behavior: "smooth", block: "center" });
+  el.querySelector("details").open = true;
+}
+
+// --------------------------------------------------------------------------
+// the board
+// --------------------------------------------------------------------------
+
+function card(r) {
+  const rule = state.rules[r.path] || {};
+  const gap = r.affected.reduce((t, a) => t + (a.annual_gap || 0), 0);
+
+  const when = r.lands === null
+    ? '<span class="badge">standing threshold</span>'
+    : r.in_force
+      ? '<span class="badge late">' + r.days_until + 'd · IN FORCE since ' + r.lands + '</span>'
+      : '<span class="badge ' + (r.days_until < 90 ? "soon" : "") + '">' + r.lands
+        + ' · in ' + r.days_until + 'd</span>';
+
+  const vdays = rule.freshness && rule.freshness.verified.days;
+  const fresh = vdays === null || vdays === undefined
+    ? '<span class="badge stale">never human-verified</span>'
+    : '<span class="badge ' + (vdays > AMBER_AFTER ? "stale" : "fresh") + '">human-verified '
+      + vdays + 'd ago</span>';
+
+  /* Which threshold to show against is decided by which side the rule bites.
+     A ceiling rule bites people above the OLD figure, so showing the new one
+     printed "S$8,000 vs S$8,000" next to someone correctly flagged — they look
+     like a false positive, which is worse than showing nothing. */
+  const who = r.affected.map((a) => {
+    let num;
+    if (typeof a.value !== "number") {
+      // someone 54 today is in scope for a rule that bites when they are 55.
+      // Show the projection, or the row reads as a false positive.
+      num = a.age_band_on
+        ? esc(a.value) + " today → <b>" + esc(a.age_band_on) + "</b> by " + esc(r.lands)
+        : esc(a.value) + " · " + esc(r.threshold_after) + " " + esc(r.unit);
+    } else if (r.bites === "above") {
+      num = money(a.value) + " · over the old " + money(r.threshold_before);
+    } else if (r.bites === "below") {
+      num = money(a.value) + " vs " + money(r.threshold_after) + " floor";
+    } else {
+      num = money(a.value) + " vs " + money(r.threshold_after);
+    }
+    return '<li><span class="name">' + esc(a.who) + "</span>"
+      + '<span class="num">' + num
+      + (a.annual_gap ? " · <b>" + money(a.annual_gap) + "/yr</b>" : "") + "</span></li>";
+  }).join("");
+
+  return '<div class="card' + (r.in_force ? " in-force" : "") + '" id="card-' + esc(r.path) + '">'
+    + "<h3>" + esc(r.title) + "</h3>"
+    + (gap > 0
+        ? '<div class="money">' + money(gap) + '</div><div class="money-sub">per year, '
+          + r.affected.length + ' affected</div>'
+        : '<div class="money prose">Priced in this rule’s cost note</div>'
+          + '<div class="money-sub">not arithmetic from the vault — open below</div>')
+    + '<ul class="who">' + who + "</ul>"
+    + '<div class="meta">' + when + fresh
+      + '<span class="badge">' + esc(r.severity) + "</span></div>"
+    + '<div class="src"><a href="' + esc(r.resource) + '" target="_blank" rel="noopener">'
+      + esc(new URL(r.resource).hostname) + "</a></div>"
+    + '<details class="more"><summary>why this, and what to do</summary>'
+      + '<div class="prose-label">Cost — written by a human</div>'
+      + '<div class="prose-block">' + (prose(rule.cost) || "—") + "</div>"
+      + '<div class="prose-label">Next step — quoted, never invented</div>'
+      + '<div class="prose-block">' + (prose(rule.next_step) || "—") + "</div>"
+      + '<div style="margin-top:10px"><button onclick="copyOut(\'' + esc(r.path)
+      + '\')">Copy to your accountant</button></div>'
+    + "</details></div>";
+}
+
+function renderBoard() {
+  const f = state.findings;
+  const board = document.getElementById("board");
+
+  if (!f.rules.length) {
+    const checked = state.health && state.health.last_sweep ? state.health.last_sweep : "not yet swept";
+    board.innerHTML = '<div class="empty" style="grid-column:1/-1">'
+      + '<div class="big">Nothing bites in the next 90 days.</div>'
+      + '<div style="margin-top:6px">' + esc(checked) + "</div>"
+      + '<div class="muted" style="margin-top:6px">A quiet day is proof of work, not absence of it.</div></div>';
+    return;
+  }
+
+  board.innerHTML = CLOCKS.map(([clock, name, why]) => {
+    const mine = f.rules.filter((r) => r.clock === clock);
+    return '<div class="clock-' + clock + '">'
+      + '<div class="col-head"><span class="col-name">' + name + "</span>"
+      + '<span class="col-why">' + why + "</span>"
+      + '<span class="col-n">' + mine.length + "</span></div>"
+      + (mine.length ? mine.map(card).join("")
+                     : '<div class="muted" style="font-size:13px;padding:6px 2px">nothing on this clock</div>')
+      + "</div>";
+  }).join("");
+}
+
+/* Founders forward, they do not share dashboards. */
+function copyOut(path) {
+  const r = state.findings.rules.find((x) => x.path === path);
+  const rule = state.rules[path] || {};
+  const text = [
+    r.title,
+    "Lands: " + (r.lands || "standing threshold") + (r.in_force ? " (ALREADY IN FORCE)" : ""),
+    "Affected: " + r.affected.map((a) => a.who + " (" + a.value
+      + (a.annual_gap ? ", gap " + money(a.annual_gap) + "/yr" : "") + ")").join("; "),
+    "Threshold: " + r.threshold_after + " " + r.unit,
+    "", "Cost:", rule.cost || "(see source)",
+    "", "Next step:", rule.next_step || "(see source)",
+    "", "Source: " + r.resource,
+  ].join("\n");
+  navigator.clipboard.writeText(text)
+    .then(() => toast("Copied — paste it to your accountant"))
+    .catch(() => toast("Could not copy; select the card text instead"));
+}
+
+// --------------------------------------------------------------------------
+// refusals and freshness
+// --------------------------------------------------------------------------
+
+function renderRefusals() {
+  const box = document.getElementById("refusals");
+  const a = state.alerts.alerts.filter((x) => x.status === "needs_human_check");
+  if (!a.length) {
+    box.innerHTML = '<div class="muted" style="font-size:13px">Nothing refused. '
+      + "Every change the curator saw either verified or held.</div>";
+    return;
+  }
+  box.innerHTML = a.map((x) =>
+    '<div class="refusal"><div class="rtitle">' + esc(x.drift || "refused") + " · " + esc(x.raised)
+    + "</div><div style='margin-top:5px'>" + prose(x.what_happened) + "</div></div>").join("");
+}
+
+function renderFreshness() {
+  const box = document.getElementById("freshness");
+  const stale = state.rules_list.filter((r) => (r.freshness.verified.days ?? 1e9) > AMBER_AFTER).length;
+  box.innerHTML = state.rules_list.map((r) => {
+    const v = r.freshness.verified.days, c = r.freshness.confirmed.days;
+    const cls = v === null ? "stale" : v > AMBER_AFTER ? "stale" : "fresh";
+    return '<div class="rule-row"><span class="rn">' + esc(r.title) + "</span>"
+      + '<span class="badge ' + cls + '">human ' + (v === null ? "never" : v + "d") + "</span>"
+      + '<span class="badge">machine ' + (c === null ? "never" : c === 0 ? "today" : c + "d") + "</span></div>";
+  }).join("")
+  + '<div class="muted" style="font-size:12px;margin-top:10px">'
+  + (stale ? stale + " rule(s) past " + AMBER_AFTER + " days since a person last read the page."
+           : "Every rule read by a person within " + AMBER_AFTER + " days.")
+  + " The curator cannot clear this by working harder.</div>";
+}
+
+// --------------------------------------------------------------------------
+// chat -- the only call that spends a token or needs credentials
+// --------------------------------------------------------------------------
+
+document.getElementById("ask").onclick = async () => {
+  const btn = document.getElementById("ask");
+  const out = document.getElementById("answer");
+  const steps = document.getElementById("steps");
+  const q = document.getElementById("q").value.trim();
+  if (!q) return;
+
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spin">◐</span> thinking';
+  out.textContent = "";
+  steps.textContent = "reading the vault, then the rules it needs…";
+
+  try {
+    const body = new FormData();
+    body.append("question", q);
+    const res = await fetch("/api/ask", { method: "POST", body });
+    const data = await res.json();
+    if (!res.ok) {
+      // the board above is still correct and still free; say that plainly
+      out.innerHTML = '<span class="muted">' + esc(data.detail || "the advisor is unavailable")
+        + "<br><br>The board above needs no credentials and is unaffected — "
+        + "every figure in it came off a government page.</span>";
+      steps.textContent = "";
+      return;
+    }
+    out.textContent = data.answer;
+    steps.textContent = data.report.replace(/\n\s+/g, "  ·  ").replace("metrics  ·  ", "");
+  } catch (e) {
+    out.innerHTML = '<span class="muted">' + esc(String(e)) + "</span>";
+    steps.textContent = "";
+  } finally {
+    btn.disabled = false;
+    btn.textContent = "Ask";
+  }
+};
+
+// --------------------------------------------------------------------------
+// boot -- the four free endpoints, in parallel, none of them billed
+// --------------------------------------------------------------------------
+
+(async function boot() {
+  try {
+    const [findings, rules, alerts] = await Promise.all([
+      get("/api/findings"), get("/api/rules"), get("/api/alerts"),
+    ]);
+    state.findings = findings;
+    state.rules_list = rules.rules;
+    rules.rules.forEach((r) => { state.rules[r.path] = r; });
+    state.alerts = alerts;
+
+    renderHead();
+    renderTimeline();
+    renderBoard();
+    renderRefusals();
+    renderFreshness();
+
+    // health does an STS call and can be slow when the token is dead, so the
+    // board never waits on it
+    get("/api/health").then((h) => { state.health = h; renderHead(); }).catch(() => {});
+  } catch (e) {
+    document.getElementById("board").innerHTML =
+      '<div class="empty" style="grid-column:1/-1">Could not reach the local API.<br>'
+      + '<span class="muted">Start it with <span class="mono">python run.py serve</span>.</span></div>';
+  }
+})();
+</script>
+</body>
+</html>

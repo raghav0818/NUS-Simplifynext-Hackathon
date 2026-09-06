@@ -1,0 +1,18 @@
+{
+  "artboards": [
+    { "file": "Main.dc.html",        "x": 0,    "y": 0,    "w": 1440, "h": 900, "title": "1 — Hero" },
+    { "file": "Thesis.dc.html",      "x": 1560, "y": 0,    "w": 1440, "h": 640, "title": "2 — The problem" },
+    { "file": "Clocks.dc.html",      "x": 3120, "y": 0,    "w": 1440, "h": 900, "title": "3 — Three clocks" },
+    { "file": "Findings.dc.html",    "x": 0,    "y": 1020, "w": 1440, "h": 960, "title": "4 — What it found" },
+    { "file": "HowItWorks.dc.html",  "x": 1560, "y": 1020, "w": 1440, "h": 780, "title": "5 — How it works" },
+    { "file": "Guarantee.dc.html",   "x": 3120, "y": 1020, "w": 1440, "h": 980, "title": "6 — The guarantee" },
+    { "file": "WhereAI.dc.html",     "x": 0,    "y": 2120, "w": 1440, "h": 870, "title": "7 — Where the AI is" },
+    { "file": "Privacy.dc.html",     "x": 1560, "y": 2120, "w": 1440, "h": 480, "title": "8 — Privacy" },
+    { "file": "Cta.dc.html",         "x": 3120, "y": 2120, "w": 1440, "h": 620, "title": "9 — Get started" },
+    { "file": "Components.dc.html",  "x": 0,    "y": 3110, "w": 1440, "h": 900, "title": "Component sheet" }
+  ],
+  "annotations": [
+    { "id": "brief", "x": 1560, "y": 3110, "w": 320, "text": "Campos translated:\n\nTwo-tone black/white, Poppins caps + Lora serif, zero-radius buttons, 140px left margin, alternating grounds.\n\nThe only colour on the whole site is the three clock hues and the in-force red — and they appear ONLY inside findings, so colour always means something." }
+  ],
+  "launch": { "view": "canvas" }
+}

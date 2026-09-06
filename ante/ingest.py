@@ -118,34 +118,59 @@ def _salary(raw, header: str) -> float:
     return int(n) if n == int(n) else round(n, 2)
 
 
-def _age_band(raw) -> str | None:
-    """-> a five-year band like '55-59', or None if unreadable.
+def _born(raw) -> dt.date | None:
+    """A date of birth out of whatever the payroll column held, or None."""
+    s = str(raw).strip()[:10]
+    for fmt in ("%Y-%m-%d", "%d/%m/%Y", "%d-%m-%Y", "%m/%d/%Y"):
+        try:
+            return dt.datetime.strptime(s, fmt).date()
+        except ValueError:
+            continue
+    return None
+
+
+def _age_band(raw) -> tuple[str, str | None] | None:
+    """-> (band, band_changes_on) or None if unreadable.
 
     Five years, not ten, and this is load-bearing: decade bands put a
     57-year-old in '50-59', vault._band() reads the lower bound as 50, and the
     `employees_over_55` rule silently stops matching them. A dropped finding is
     the one failure this product cannot have.
+
+    The band alone is not enough, for the same reason. It is a snapshot, and
+    rules bite in the future: someone who is 54 today and 55 in three weeks is
+    in scope for a rule effective next January, and banding them '50-54' forever
+    drops that finding. So when the payroll gave a real date of birth we also
+    record the day they enter the next band, and vault._band() projects forward
+    from it. A bare age cannot support that -- we know they are 54, not when
+    they turn 55 -- so it returns None and the band stands as recorded.
     """
     s = str(raw).strip()
     if re.fullmatch(r"\d{1,3}\s*-\s*\d{1,3}|\d{1,3}\s*\+", s):
-        return re.sub(r"\s+", "", s)                      # already a band
+        return re.sub(r"\s+", "", s), None                # already a band
 
-    age = None
-    if s.isdigit() and int(s) < 120:
-        age = int(s)
+    today = dt.date.today()
+    born = _born(s)
+    if born is not None:
+        age = today.year - born.year - ((today.month, today.day) < (born.month, born.day))
+    elif s.isdigit() and int(s) < 120:
+        age, born = int(s), None
     else:
-        for fmt in ("%Y-%m-%d", "%d/%m/%Y", "%d-%m-%Y", "%m/%d/%Y"):
-            try:
-                born = dt.datetime.strptime(s[:10], fmt).date()
-            except ValueError:
-                continue
-            today = dt.date.today()
-            age = today.year - born.year - ((today.month, today.day) < (born.month, born.day))
-            break
-
-    if age is None or not 14 <= age < 100:
         return None
-    return "65+" if age >= 65 else f"{age // 5 * 5}-{age // 5 * 5 + 4}"
+
+    if not 14 <= age < 100:
+        return None
+    band = "65+" if age >= 65 else f"{age // 5 * 5}-{age // 5 * 5 + 4}"
+    if born is None:
+        return band, None
+
+    # the birthday on which they enter the next five-year band
+    next_at = (age // 5 * 5) + 5
+    try:
+        changes = born.replace(year=born.year + next_at)
+    except ValueError:                                    # born 29 February
+        changes = born.replace(month=2, day=28, year=born.year + next_at)
+    return band, str(changes)
 
 
 def _expiry(raw):
@@ -202,15 +227,23 @@ def read_people(csv_text: str, overrides: dict | None = None) -> dict:
             problems.append(f"row {i}: no name, skipped")
             continue
         pass_type = _pass_type(row.get(cols["pass_type"]))
-        band = _age_band(row.get(cols["age_band"]))
+        banded = _age_band(row.get(cols["age_band"]))
         if pass_type is None:
             problems.append(f"row {i} ({name}): pass type "
                             f"{row.get(cols['pass_type'])!r} not recognised")
-        if band is None:
+        if banded is None:
             problems.append(f"row {i} ({name}): age/DOB "
                             f"{row.get(cols['age_band'])!r} not readable")
-        if pass_type is None or band is None:
+        if pass_type is None or banded is None:
             continue
+        band, changes = banded
+        # an age with no date of birth cannot be projected forward, so an
+        # age-banded rule landing after their next birthday may miss them. Said
+        # out loud rather than left as a silent gap.
+        if changes is None:
+            problems.append(f"row {i} ({name}): age given without a date of "
+                            f"birth, so band '{band}' cannot be projected to a "
+                            f"future rule's effective date")
         people.append({
             "type": "person",
             "title": name,
@@ -220,6 +253,7 @@ def read_people(csv_text: str, overrides: dict | None = None) -> dict:
                                       cols["monthly_salary"]),
             "pass_expiry": _expiry(row.get(cols.get("pass_expiry", ""))),
             "age_band": band,
+            **({"band_changes_on": changes} if changes else {}),
         })
     return {"people": people, "problems": problems, "columns": cols}
 
@@ -352,6 +386,7 @@ Ivy Chen,Data Analyst,Permanent Resident,4600,1998-06-27,
 Jonas Meier,Frontend Engineer,EP,"7,200",1987-09-03,2029-06-30
 Kavya Nair,HR Coordinator,SC,4200,2000-04-16,
 Lim Wei Jie,Junior Data Analyst,citizen,3900,2001-10-08,
+Margaret Soh,Operations Manager,SC,6000,1971-11-14,
 """
 
 
@@ -360,7 +395,7 @@ def _selfcheck() -> None:
                  "financial_year_end": "2026-12-31", "annual_revenue_run_rate": 862000,
                  "founder_email": "founder@testbed.example"}, CSV)
     assert "error" not in out, out
-    assert out["people"] == 12, out["people"]
+    assert out["people"] == 13, out["people"]
     assert not out["problems"], out["problems"]
 
     fm = {p.stem: _split(p)[0] for p in _notes("people")}
@@ -376,10 +411,30 @@ def _selfcheck() -> None:
     hit = {r["path"]: {a["who"] for a in r["affected"]} for r in out["findings"]["rules"]}
     assert hit["rules/s-pass-qualifying-salary-2027.md"] == {"Dinesh Raj"}, hit
     assert hit["rules/ep-qualifying-salary-2027.md"] == {"Grace Wong"}, hit
-    assert hit["rules/cpf-senior-worker-rates-2027.md"] == {"Ben Ong"}, hit
     assert hit["rules/cpf-ow-ceiling-2026.md"] == {"Ada Tan"}, hit
-    print(f"ingest ok  ->  12 staff from messy headers, vault validates, "
+    print(f"ingest ok  ->  13 staff from messy headers, vault validates, "
           f"{out['findings']['rules_with_exposure']} rules bite the right people")
+
+    # Margaret Soh is 54 today and 55 well before the rule takes effect on
+    # 2027-01-01. Banding her '50-54' forever is the dropped finding this
+    # product cannot have -- the rule note says "including anyone crossing 55
+    # during 2026" -- so she must be in scope now, while a pay review can still
+    # budget for it, not from her birthday onwards.
+    meg = next(v for v in fm.values() if v["title"] == "Margaret Soh")
+    assert meg["age_band"] == "50-54", meg["age_band"]
+    assert meg["band_changes_on"] == "2026-11-14", meg
+    assert hit["rules/cpf-senior-worker-rates-2027.md"] == {"Ben Ong", "Margaret Soh"}, hit
+    print(f"           age projected to the date each rule bites: Margaret Soh "
+          f"is 54 today, 55 on {meg['band_changes_on']}, and in scope for the "
+          f"2027 CPF rule")
+
+    # a bare age carries no birthday, so it cannot be projected -- and that is
+    # reported against the row rather than left as a silent gap
+    aged = read_people("Name,Pass,Pay,Age\nBob Tan,SC,6000,54\n")
+    assert aged["people"][0]["age_band"] == "50-54", aged
+    assert "band_changes_on" not in aged["people"][0], aged
+    assert any("cannot be projected" in p for p in aged["problems"]), aged["problems"]
+    print("           a bare age is banded but flagged as unprojectable, not guessed")
 
     assert "error" in build({}, CSV), "must refuse to overwrite a populated vault"
 
