@@ -1,0 +1,56 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@600;700;800&family=Lora:ital,wght@0,400;0,500;1,400&family=IBM+Plex+Mono:wght@400;500&display=swap">
+  <style>
+    body { margin: 0; }
+    * { box-sizing: border-box; }
+    a { color: inherit; text-decoration: none; }
+    a:hover { opacity: .7; }
+    .d { font-family: Poppins, "Helvetica Neue", Arial, sans-serif; }
+    .s { font-family: Lora, Georgia, "Times New Roman", serif; }
+    .m { font-family: "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace; }
+  </style>
+</helmet>
+<div style="width: 1440px; height: 900px; background: #ffffff; padding: 100px 140px;">
+  <div class="m" style="color: #7c868f; font-size: 12px; letter-spacing: .22em; margin-bottom: 26px;">THE THREE CLOCKS</div>
+  <h2 class="d" style="margin: 0 0 18px; color: #16191b; font-size: 58px; font-weight: 800; letter-spacing: -.022em; line-height: 1.04;">THREE WAYS IT BITES</h2>
+  <p class="s" style="margin: 0 0 62px; color: #5c666d; font-size: 20px; line-height: 1.55; max-width: 640px;">Every obligation that lands on a small company arrives on one of three clocks. Ante tags every rule with which one.</p>
+
+  <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 56px;">
+
+    <div style="display: flex; flex-direction: column; gap: 14px; border-top: 3px solid #6741c0; padding-top: 22px;">
+      <div class="m" style="color: #6741c0; font-size: 12.5px; font-weight: 500; letter-spacing: .18em;">LAW</div>
+      <div class="d" style="color: #16191b; font-size: 27px; font-weight: 700; letter-spacing: -.012em;">The rule moved</div>
+      <p class="s" style="margin: 0; color: #5c666d; font-size: 17.5px; line-height: 1.6;">Same company, new number. Someone changed a figure and no letter arrived.</p>
+      <div class="m" style="color: #16191b; font-size: 13.5px; line-height: 1.7; margin-top: 8px;">S Pass floor<br>S$3,300 &rarr; S$3,600</div>
+    </div>
+
+    <div style="display: flex; flex-direction: column; gap: 14px; border-top: 3px solid #0a6c48; padding-top: 22px;">
+      <div class="m" style="color: #0a6c48; font-size: 12.5px; font-weight: 500; letter-spacing: .18em;">GROWTH</div>
+      <div class="d" style="color: #16191b; font-size: 27px; font-weight: 700; letter-spacing: -.012em;">You moved</div>
+      <p class="s" style="margin: 0; color: #5c666d; font-size: 17.5px; line-height: 1.6;">Same rule, and you just grew into it. The threshold never changed; you crossed it.</p>
+      <div class="m" style="color: #16191b; font-size: 13.5px; line-height: 1.7; margin-top: 8px;">Revenue crosses S$1m<br>GST becomes compulsory</div>
+    </div>
+
+    <div style="display: flex; flex-direction: column; gap: 14px; border-top: 3px solid #a8560a; padding-top: 22px;">
+      <div class="m" style="color: #a8560a; font-size: 12.5px; font-weight: 500; letter-spacing: .18em;">RECURRING</div>
+      <div class="d" style="color: #16191b; font-size: 27px; font-weight: 700; letter-spacing: -.012em;">A date arrived</div>
+      <p class="s" style="margin: 0; color: #5c666d; font-size: 17.5px; line-height: 1.6;">Neither moved. A deadline derived from your own financial year end came round.</p>
+      <div class="m" style="color: #16191b; font-size: 13.5px; line-height: 1.7; margin-top: 8px;">ACRA annual return<br>FYE + 7 months</div>
+    </div>
+  </div>
+
+  <div style="margin-top: 68px; border-top: 1px solid #e4e8ea; padding-top: 30px;">
+    <p class="s" style="margin: 0; color: #16191b; font-size: 24px; line-height: 1.5; max-width: 900px;">A calendar app can only ever handle the third. <em>The first two are where the money is</em> &mdash; and they are structurally invisible to a tool that stores only the dates you typed in yourself.</p>
+  </div>
+</div>
+</x-dc>
+</body>
+</html>

@@ -1,0 +1,62 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@600;700;800&family=Lora:ital,wght@0,400;0,500;1,400&family=IBM+Plex+Mono:wght@400;500&display=swap">
+  <style>
+    body { margin: 0; }
+    * { box-sizing: border-box; }
+    a { color: inherit; text-decoration: none; }
+    a:hover { opacity: .7; }
+    .d { font-family: Poppins, "Helvetica Neue", Arial, sans-serif; }
+    .s { font-family: Lora, Georgia, "Times New Roman", serif; }
+    .m { font-family: "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace; }
+  </style>
+</helmet>
+<div style="width: 1440px; height: 780px; background: #ffffff; display: flex;">
+
+  <div style="width: 760px; padding: 96px 70px 96px 140px; display: flex; flex-direction: column; justify-content: center;">
+    <div class="m" style="color: #7c868f; font-size: 12px; letter-spacing: .22em; margin-bottom: 40px;">HOW IT WORKS</div>
+
+    <div style="margin-bottom: 54px;">
+      <h3 class="d" style="margin: 0 0 16px; color: #16191b; font-size: 36px; font-weight: 700; letter-spacing: -.018em;">The vault</h3>
+      <p class="s" style="margin: 0; color: #5c666d; font-size: 18px; line-height: 1.65; max-width: 500px;">Six Singapore rules and your roster, as plain markdown files on your own machine. Open it in Obsidian, diff it in git. The folder is the product.</p>
+    </div>
+
+    <div>
+      <h3 class="d" style="margin: 0 0 16px; color: #16191b; font-size: 36px; font-weight: 700; letter-spacing: -.018em;">The curator</h3>
+      <p class="s" style="margin: 0; color: #5c666d; font-size: 18px; line-height: 1.65; max-width: 500px;">Nobody starts it. Every day it re-reads the government pages to check the law still says what your vault claims. On a quiet day it costs nothing at all &mdash; the model is never even loaded.</p>
+    </div>
+  </div>
+
+  <div style="width: 680px; background: #16191b; padding: 96px 70px; display: flex; flex-direction: column; justify-content: center; gap: 26px;">
+    <div class="m" style="color: #b9c2c8; font-size: 11.5px; letter-spacing: .2em;">THE DAILY SWEEP</div>
+
+    <div style="display: flex; flex-direction: column; gap: 16px;">
+      <div style="border-left: 2px solid #3a4247; padding: 4px 0 4px 22px;">
+        <div class="d" style="color: #fff; font-size: 17px; font-weight: 700;">1 &nbsp;Detect</div>
+        <div class="s" style="color: #b9c2c8; font-size: 15.5px; line-height: 1.55; margin-top: 5px;">Pure Python. Hashes only the region of each page around that rule&rsquo;s own keywords. <span class="m" style="color: #7ec8a0; font-size: 13px;">0 tokens</span></div>
+      </div>
+      <div style="border-left: 2px solid #3a4247; padding: 4px 0 4px 22px;">
+        <div class="d" style="color: #fff; font-size: 17px; font-weight: 700;">2 &nbsp;Understand</div>
+        <div class="s" style="color: #b9c2c8; font-size: 15.5px; line-height: 1.55; margin-top: 5px;">Only for a page that actually moved. The model is given <strong style="color:#fff;">no tools at all</strong> &mdash; it describes, and cannot act.</div>
+      </div>
+      <div style="border-left: 2px solid #b42318; padding: 4px 0 4px 22px;">
+        <div class="d" style="color: #fff; font-size: 17px; font-weight: 700;">3 &nbsp;Verify</div>
+        <div class="s" style="color: #b9c2c8; font-size: 15.5px; line-height: 1.55; margin-top: 5px;">Five gates, pure Python, re-checking every claim against the bytes we fetched.</div>
+      </div>
+    </div>
+
+    <div style="border-top: 1px solid #2a3136; padding-top: 22px; margin-top: 6px;">
+      <div class="s" style="color: #b9c2c8; font-size: 15.5px; line-height: 1.6; font-style: italic;">Only then does anything get written &mdash; and the previous file is kept, so one click puts it back.</div>
+    </div>
+  </div>
+</div>
+</x-dc>
+</body>
+</html>
