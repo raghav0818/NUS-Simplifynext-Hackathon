@@ -146,6 +146,26 @@ def rules() -> dict:
     return {"rules": out, "stale_after_days": STALE_AFTER}
 
 
+@app.get("/api/rule/{slug}")
+def rule(slug: str) -> dict:
+    """One rule as the founder can audit it: raw frontmatter, every prose section.
+
+    The board quotes `# Cost` and `# Next step`; this is the drawer behind
+    "read the full note", and it exists so a claim on screen can be traced to the
+    file it came from without leaving the browser for a text editor.
+    """
+    p = _vault.VAULT / "rules" / f"{_slug(slug)}.md"
+    fm, body = _vault._split(p)
+    return {
+        "slug": slug, "path": _vault._rel(p), "title": fm.get("title"),
+        "resource": fm.get("resource"),
+        # str() so dates and numbers survive JSON exactly as the note spells them
+        "frontmatter": [[k, str(v)] for k, v in fm.items() if k != "title"],
+        "sections": [[h[2:], _vault.section(body, h)] for h in _vault.SECTIONS
+                     if _vault.section(body, h)],
+    }
+
+
 @app.get("/api/alerts")
 def alerts() -> dict:
     """What Ante raised -- and, more usefully, what it refused to do.
@@ -313,6 +333,15 @@ def _selfcheck() -> None:
     assert spass["freshness"]["verified"]["days"] is not None, spass
     print(f"rules ok     ->  {len(r['rules'])} rules with '# Cost' and '# Next step' "
           f"quoted, 3 freshness clocks kept separate")
+
+    one = c.get("/api/rule/s-pass-qualifying-salary-2027").json()
+    # the drawer's whole job is auditability: the raw note, not a summary of it
+    assert [s[0] for s in one["sections"]] == ["What changes", "Who it hits", "Cost",
+                                               "Next step", "Citations"], one["sections"]
+    assert any(k == "verified" for k, _ in one["frontmatter"]), one["frontmatter"]
+    assert c.get("/api/rule/nope").status_code == 404
+    print(f"rule ok      ->  {len(one['sections'])} prose sections + "
+          f"{len(one['frontmatter'])} frontmatter keys, verbatim")
 
     a = c.get("/api/alerts").json()
     assert a["needs_human_check"] >= 1, a

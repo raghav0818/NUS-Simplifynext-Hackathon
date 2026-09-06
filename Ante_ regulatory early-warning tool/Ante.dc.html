@@ -1,0 +1,633 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="_ds/broadsheet-feb9e36c-d90c-471f-a6b9-5842cbfceab6/styles.css">
+<script src="_ds/broadsheet-feb9e36c-d90c-471f-a6b9-5842cbfceab6/_ds_bundle.js"></script>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&amp;display=swap">
+<style>
+body{margin:0;background:#f3f2f2;color:#201e1d;font-family:"Source Serif 4",Georgia,serif;-webkit-font-smoothing:antialiased}
+*{box-sizing:border-box}
+a{color:#006786;text-decoration:none;border-bottom:1px solid #99e0ff}
+a:hover{color:#0a303e;border-bottom-color:#0088b0}
+summary{list-style:none}
+summary::-webkit-details-marker{display:none}
+input,select,button,textarea{font-family:inherit}
+@keyframes slidein{from{transform:translateX(24px);opacity:0}to{transform:translateX(0);opacity:1}}
+</style>
+</helmet>
+
+<div style="max-width:1320px;padding:0 clamp(24px,6vw,120px) 160px">
+
+<div style="display:flex;flex-wrap:wrap;gap:20px 48px;align-items:baseline;padding:52px 0 0">
+<div style="font-size:19px;letter-spacing:.02em">Ante</div>
+<div style="font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:11.5px;letter-spacing:.16em;color:#7d7979;text-transform:uppercase">Harborlight Analytics Pte Ltd · UEN 202318472K · 12 staff</div>
+<div style="margin-left:auto;font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:11.5px;letter-spacing:.1em;color:#7d7979">SWEPT 06 SEP 2026 · 6 RULES · 0 CHANGED</div>
+</div>
+
+
+
+<h1 style="margin:26px 0 0;font-weight:400;font-size:clamp(30px,3.9vw,55px);line-height:1.16;letter-spacing:-.015em;max-width:30ch;text-wrap:pretty">Staff&nbsp;04 and Staff&nbsp;07 are <span style="font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:.86em;letter-spacing:-.01em">S$4,800</span> a year under salary floors that land on 1&nbsp;January&nbsp;2027, and Staff&nbsp;01 has been over the CPF ceiling for <span style="color:#aa0b56">248 days</span>.</h1>
+
+<p style="margin:34px 0 0;font-size:19px;line-height:1.6;color:#605d5d;max-width:62ch;text-wrap:pretty">Every figure on this page was copied off a <span style="font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:.9em">.gov.sg</span> page. Two of the six findings price themselves from your own payroll; the other four are priced in the human-written cost note on their rule, quoted rather than paraphrased.</p>
+
+<sc-if value="{{ banner }}" hint-placeholder-val="{{ true }}">
+<div style="margin-top:88px;background:#fff1f4;padding:44px clamp(24px,4vw,56px) 48px;border-top:3px solid #d6006c">
+<div style="display:flex;flex-wrap:wrap;gap:12px 24px;align-items:baseline">
+<div style="font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:12px;letter-spacing:.2em;color:#aa0b56;text-transform:uppercase">Already in force · unbudgeted</div>
+<div style="font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:12px;letter-spacing:.08em;color:#79103d">EFFECTIVE 1 JAN 2026 · 248 DAYS AGO</div>
+</div>
+<div style="display:grid;grid-template-columns:minmax(0,1.5fr) minmax(220px,.85fr);gap:20px 64px;margin-top:26px;align-items:start">
+<div>
+<div style="font-size:clamp(24px,2.4vw,33px);line-height:1.24;letter-spacing:-.01em;max-width:34ch;text-wrap:pretty">The CPF Ordinary Wage ceiling rose from S$7,400 to S$8,000 and the payroll was never adjusted.</div>
+<p style="margin:22px 0 0;font-size:18px;line-height:1.62;color:#605d5d;max-width:56ch;text-wrap:pretty">Staff 01 earns S$8,200 a month, so an extra S$600 became CPF-liable eight months ago. No calendar app can show this: the date is in the past.</p>
+<div style="margin-top:28px;font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:12.5px;letter-spacing:.02em;color:#201e1d;line-height:1.9">DO THIS NEXT &nbsp;→&nbsp; count CPF-liable staff over S$7,400,<br>multiply by up to S$1,224, add it to the payroll budget.</div>
+</div>
+<div style="text-align:right">
+<div style="font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:clamp(30px,3.4vw,46px);line-height:1;letter-spacing:-.02em;color:#aa0b56">S$1,224</div>
+<div style="font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:11.5px;letter-spacing:.14em;color:#79103d;margin-top:10px;text-transform:uppercase">a year, per affected head</div>
+<div style="font-size:16.5px;line-height:1.6;color:#605d5d;margin-top:20px;font-style:italic">Quoted from the rule's cost note. Ante does not derive an employer CPF rate it cannot read off the page.</div>
+<div style="margin-top:18px;font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:12px"><a href="https://www.cpf.gov.sg/service/article/what-is-the-ordinary-wage-ow-ceiling" target="_blank" rel="noopener">cpf.gov.sg ↗</a></div>
+</div>
+</div>
+</div>
+</sc-if>
+
+<sc-if value="{{ inlineForce }}" hint-placeholder-val="{{ false }}">
+<div style="margin-top:80px;border-top:3px solid #d6006c;padding-top:26px;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:24px 48px;align-items:baseline">
+<div>
+<div style="font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:11.5px;letter-spacing:.2em;color:#aa0b56;text-transform:uppercase">Already in force · 248 days · unbudgeted</div>
+<div style="font-size:23px;line-height:1.4;margin-top:14px;max-width:60ch;text-wrap:pretty">The CPF Ordinary Wage ceiling rose from S$7,400 to S$8,000 and the payroll was never adjusted. Staff 01 earns S$8,200, so an extra S$600 became CPF-liable eight months ago.</div>
+</div>
+<div style="text-align:right">
+<div style="font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:28px;color:#aa0b56">S$1,224</div>
+<div style="font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:10.5px;letter-spacing:.14em;color:#79103d;margin-top:8px;text-transform:uppercase">a year, per head</div>
+</div>
+</div>
+</sc-if>
+
+<div style="margin-top:104px">
+<div style="display:flex;flex-wrap:wrap;gap:10px 28px;align-items:baseline">
+<h2 style="margin:0;font-weight:400;font-size:26px;letter-spacing:-.01em">Eighteen months</h2>
+<div style="font-size:17px;color:#605d5d;max-width:60ch">Everything left of the line is in force already. Three rules land on the same day.</div>
+</div>
+<div style="position:relative;height:150px;margin-top:44px">
+<div style="position:absolute;left:0;top:0;bottom:0;width:44.8%;background:#fff1f4"></div>
+<div style="position:absolute;left:0;right:0;top:74px;height:1px;background:#d7d3d3"></div>
+<div style="position:absolute;left:44.8%;top:0;bottom:22px;width:2px;background:#201e1d"></div>
+<div style="position:absolute;left:44.8%;top:-4px;transform:translateX(-50%);font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:11px;letter-spacing:.14em;white-space:nowrap">TODAY</div>
+
+<div style="position:absolute;left:7.8%;top:74px;width:9px;height:9px;background:#d6006c;transform:translate(-50%,-50%)"></div>
+<div style="position:absolute;left:7.8%;top:32px;transform:translateX(-50%);text-align:center;white-space:nowrap">
+<div style="font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:13px;color:#aa0b56">−248d</div>
+<div style="font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:10.5px;letter-spacing:.1em;color:#79103d;margin-top:4px">1 JAN 2026</div>
+</div>
+<div style="position:absolute;left:7.8%;top:92px;transform:translateX(-50%);width:150px;text-align:center;font-size:15px;color:#605d5d;line-height:1.45">CPF Ordinary Wage ceiling</div>
+
+<div style="position:absolute;left:62.2%;top:74px;width:13px;height:13px;background:#201e1d;transform:translate(-50%,-50%)"></div>
+<div style="position:absolute;left:62.2%;top:32px;transform:translateX(-50%);text-align:center;white-space:nowrap">
+<div style="font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:13px">+117d ×3</div>
+<div style="font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:10.5px;letter-spacing:.1em;color:#7d7979;margin-top:4px">1 JAN 2027</div>
+</div>
+<div style="position:absolute;left:62.2%;top:92px;transform:translateX(-50%);width:190px;text-align:center;font-size:15px;color:#605d5d;line-height:1.45">S Pass floor · EP floor · CPF senior rates</div>
+
+<div style="position:absolute;left:93.7%;top:74px;width:9px;height:9px;background:#605d5d;transform:translate(-50%,-50%)"></div>
+<div style="position:absolute;left:93.7%;top:32px;transform:translateX(-50%);text-align:center;white-space:nowrap">
+<div style="font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:13px;color:#605d5d">+328d</div>
+<div style="font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:10.5px;letter-spacing:.1em;color:#7d7979;margin-top:4px">31 JUL 2027</div>
+</div>
+<div style="position:absolute;left:93.7%;top:92px;transform:translateX(-50%);width:140px;text-align:center;font-size:15px;color:#605d5d;line-height:1.45">ACRA annual return</div>
+</div>
+<div style="font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:11.5px;letter-spacing:.1em;color:#7d7979;margin-top:18px">GST REGISTRATION IS A STANDING THRESHOLD. IT HAS NO DATE, IT HAS A LINE YOU CROSS</div>
+</div>
+
+<div style="margin-top:112px">
+<div style="display:flex;flex-wrap:wrap;gap:16px 28px;align-items:baseline;justify-content:space-between">
+<h2 style="margin:0;font-weight:400;font-size:26px;letter-spacing:-.01em">Six findings, ranked by when they bite</h2>
+<div style="display:flex;flex-wrap:wrap;gap:8px">
+<sc-for list="{{ filters }}" as="f" hint-placeholder-count="4">
+<button onClick="{{ f.pick }}" style="cursor:pointer;background:transparent;border:1px solid #d7d3d3;border-radius:2px;padding:7px 14px;font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:#605d5d" style-hover="border-color:#0088b0;color:#006786">{{ f.label }} {{ f.count }}</button>
+</sc-for>
+</div>
+</div>
+
+<div style="margin-top:34px">
+<sc-for list="{{ findings }}" as="r" hint-placeholder-count="6">
+<details style="border-top:1px solid #d7d3d3">
+<summary style="display:grid;grid-template-columns:120px minmax(0,1fr) 200px;gap:12px 36px;padding:28px 0;cursor:pointer;align-items:baseline">
+<div>
+<div style="font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:14px;color:{{ r.whenInk }}">{{ r.when }}</div>
+<div style="font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:10.5px;letter-spacing:.14em;color:#7d7979;margin-top:5px;text-transform:uppercase">{{ r.clockLabel }}</div>
+</div>
+<div>
+<div style="font-size:22px;line-height:1.32;letter-spacing:-.005em;max-width:44ch;text-wrap:pretty">{{ r.title }}</div>
+<div style="font-size:17px;line-height:1.58;color:#605d5d;margin-top:9px;max-width:60ch;text-wrap:pretty">{{ r.consequence }}</div>
+<div style="font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:12px;color:#006786;margin-top:12px">{{ r.host }} · read by a person {{ r.verified }}</div>
+</div>
+<div style="text-align:right">
+<div style="font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:{{ r.figSize }};color:{{ r.figInk }};line-height:1.15">{{ r.figure }}</div>
+<div style="font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:10.5px;letter-spacing:.12em;color:#7d7979;margin-top:7px;text-transform:uppercase">{{ r.figureNote }}</div>
+</div>
+</summary>
+<div style="display:grid;grid-template-columns:120px minmax(0,1fr) 200px;gap:36px;padding:0 0 44px">
+<div></div>
+<div>
+<div style="font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:10.5px;letter-spacing:.16em;color:#7d7979;text-transform:uppercase">Who it hits, from your own roster</div>
+<sc-for list="{{ r.affected }}" as="a" hint-placeholder-count="1">
+<div style="display:flex;flex-wrap:wrap;gap:6px 18px;align-items:baseline;margin-top:12px;padding-bottom:12px;border-bottom:1px solid #eae7e7">
+<span style="font-size:18px">{{ a.who }}</span>
+<span style="font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:13.5px;color:#605d5d;margin-left:auto">{{ a.detail }}</span>
+</div>
+</sc-for>
+
+<div style="font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:10.5px;letter-spacing:.16em;color:#7d7979;text-transform:uppercase;margin-top:34px">Cost, written by a human, quoted verbatim</div>
+<p style="margin:12px 0 0;font-size:18px;line-height:1.65;color:#201e1d;max-width:62ch;text-wrap:pretty">{{ r.cost }}</p>
+
+<div style="font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:10.5px;letter-spacing:.16em;color:#7d7979;text-transform:uppercase;margin-top:34px">Next step, quoted, never invented</div>
+<p style="margin:12px 0 0;font-size:18px;line-height:1.65;color:#201e1d;max-width:62ch;text-wrap:pretty">{{ r.next }}</p>
+
+<div style="display:flex;flex-wrap:wrap;gap:10px;margin-top:32px">
+<button onClick="{{ r.open }}" style="cursor:pointer;background:#201e1d;color:#f3f2f2;border:1px solid #201e1d;border-radius:2px;padding:12px 22px;font-size:16px" style-hover="background:#444141">Read the full note</button>
+<button onClick="{{ r.copy }}" style="cursor:pointer;background:transparent;color:#201e1d;border:1px solid #201e1d;border-radius:2px;padding:12px 22px;font-size:16px" style-hover="border-color:#0088b0;color:#006786">Copy to your accountant</button>
+</div>
+</div>
+<div>
+<sc-if value="{{ provenance }}" hint-placeholder-val="{{ true }}">
+<div style="font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:10.5px;letter-spacing:.16em;color:#7d7979;text-transform:uppercase">Provenance</div>
+<sc-for list="{{ r.chain }}" as="c" hint-placeholder-count="4">
+<div style="display:flex;gap:10px;align-items:baseline;margin-top:12px">
+<span style="font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:11px;color:{{ c.ink }}">{{ c.mark }}</span>
+<span style="font-size:15px;line-height:1.5;color:{{ c.ink }}">{{ c.text }}</span>
+</div>
+</sc-for>
+</sc-if>
+</div>
+</div>
+</details>
+</sc-for>
+<div style="border-top:1px solid #d7d3d3;padding-top:22px;font-size:17px;color:#605d5d;max-width:64ch;font-style:italic;text-wrap:pretty">{{ ledgerNote }}</div>
+</div>
+</div>
+
+<div style="margin-top:112px">
+<div style="display:flex;flex-wrap:wrap;gap:10px 28px;align-items:baseline">
+<h2 style="margin:0;font-weight:400;font-size:26px;letter-spacing:-.01em">What the curator changed this morning</h2>
+<div style="font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:11.5px;letter-spacing:.1em;color:#7d7979">S-PASS-QUALIFYING-SALARY-2027 · APPLIED 06 SEP 2026 06:12</div>
+</div>
+<p style="margin:20px 0 0;font-size:19px;line-height:1.6;color:#605d5d;max-width:64ch;text-wrap:pretty">Nobody started this. It re-read the MOM page, found the figure had moved, proved the new number was printed there, and rewrote the rule.</p>
+
+<div style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:0;margin-top:44px;border-top:1px solid #201e1d">
+<div style="padding:26px 32px 30px 0;border-right:1px solid #d7d3d3">
+<div style="font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:10.5px;letter-spacing:.16em;color:#7d7979;text-transform:uppercase">Was, until 06:12 today</div>
+<div style="font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:34px;color:#7d7979;margin-top:16px;text-decoration:line-through">S$3,300</div>
+<div style="font-size:16.5px;line-height:1.6;color:#605d5d;margin-top:16px;max-width:40ch">threshold_after, as verified by a person on 4 September 2026.</div>
+</div>
+<div style="padding:26px 0 30px 32px">
+<div style="font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:10.5px;letter-spacing:.16em;color:#aa0b56;text-transform:uppercase">Now, written by the curator</div>
+<div style="font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:34px;color:#201e1d;margin-top:16px">S$3,600</div>
+<div style="font-size:16.5px;line-height:1.6;color:#605d5d;margin-top:16px;max-width:40ch">Found verbatim in the quote below, on the page it says it read.</div>
+</div>
+</div>
+
+<div style="margin-top:40px;background:#eae9e9;padding:30px clamp(20px,3vw,38px)">
+<div style="font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:10.5px;letter-spacing:.16em;color:#7d7979;text-transform:uppercase">The quote, as fetched from mom.gov.sg</div>
+<p style="margin:16px 0 0;font-size:20px;line-height:1.66;max-width:66ch;text-wrap:pretty">“Employers must pay S Pass holders a fixed monthly salary of at least <span style="background:#ffdee6;padding:1px 4px">S$3,600</span> for new applications submitted from 1 January 2027.”</p>
+<div style="font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:12px;color:#7d7979;margin-top:18px">MATCHED 122 CHARACTERS · FIGURE FOUND INSIDE THE MATCHED SPAN · <a href="https://www.mom.gov.sg/passes-and-permits/s-pass/eligibility" target="_blank" rel="noopener">mom.gov.sg ↗</a></div>
+</div>
+
+</div>
+
+<div style="margin-top:112px">
+<div style="display:flex;flex-wrap:wrap;gap:10px 28px;align-items:baseline">
+<h2 style="margin:0;font-weight:400;font-size:26px;letter-spacing:-.01em">Ask Ante</h2>
+<div style="font-size:17px;color:#605d5d;max-width:56ch">The drill-down, not the front door. Everything above is already correct and cost nothing.</div>
+</div>
+<div style="display:flex;flex-wrap:wrap;gap:12px;margin-top:28px;max-width:820px">
+<input value="{{ question }}" onChange="{{ onQuestion }}" style="flex:1;min-width:260px;font-size:18px;padding:14px 16px;border:1px solid #201e1d;border-radius:2px;background:#f8f4f4;color:#201e1d">
+<button onClick="{{ ask }}" style="cursor:pointer;background:#0088b0;color:#fff;border:1px solid #0088b0;border-radius:2px;padding:14px 28px;font-size:17px" style-hover="background:#1186ac">Ask</button>
+</div>
+<div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:14px">
+<sc-for list="{{ suggestions }}" as="s" hint-placeholder-count="3">
+<button onClick="{{ s.pick }}" style="cursor:pointer;background:transparent;border:1px solid #d7d3d3;border-radius:2px;padding:7px 13px;font-size:14.5px;color:#605d5d" style-hover="border-color:#0088b0;color:#006786">{{ s.text }}</button>
+</sc-for>
+</div>
+<sc-if value="{{ asked }}" hint-placeholder-val="{{ false }}">
+<div style="margin-top:36px;max-width:70ch">
+<sc-for list="{{ answer }}" as="p" hint-placeholder-count="3">
+<p style="margin:0 0 20px;font-size:19px;line-height:1.66;text-wrap:pretty">{{ p.text }}</p>
+</sc-for>
+<div style="font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:11.5px;letter-spacing:.06em;color:#7d7979;padding-top:18px;border-top:1px solid #d7d3d3;line-height:1.9">{{ metrics }}</div>
+</div>
+</sc-if>
+</div>
+
+<div style="margin-top:112px">
+<div style="display:flex;flex-wrap:wrap;gap:10px 28px;align-items:baseline">
+<h2 style="margin:0;font-weight:400;font-size:26px;letter-spacing:-.01em">Start a vault</h2>
+<div style="font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:11.5px;letter-spacing:.1em;color:#7d7979">A PAYROLL CSV AND FOUR ANSWERS · NOTHING LEAVES THE LAPTOP</div>
+</div>
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:48px 72px;margin-top:36px">
+<div>
+<div style="border:1px dashed #bab6b6;padding:44px 28px;text-align:center;background:#f8f4f4">
+<div style="font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:13px;letter-spacing:.1em;color:#605d5d">DROP PAYROLL.CSV HERE</div>
+<div style="font-size:16.5px;color:#7d7979;margin-top:12px;line-height:1.55;max-width:38ch;margin-left:auto;margin-right:auto;text-wrap:pretty">Name, salary, pass type, date of birth, pass expiry. Column names are matched by an alias table, never by a model.</div>
+</div>
+<sc-if value="{{ mapping }}" hint-placeholder-val="{{ true }}">
+<div style="margin-top:24px;border-left:3px solid #0088b0;padding:4px 0 4px 20px">
+<div style="font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:11px;letter-spacing:.14em;color:#006786;text-transform:uppercase">needs_mapping · 1 column</div>
+<div style="font-size:18px;line-height:1.5;margin-top:12px;max-width:44ch;text-wrap:pretty">Ante could not identify the salary column. It will not guess. Which column is it?</div>
+<select style="margin-top:16px;font-size:16px;padding:10px 12px;border:1px solid #201e1d;border-radius:2px;background:#f8f4f4;color:#201e1d">
+<option>gross_mthly</option>
+<option>basic_pay</option>
+<option>total_cost</option>
+<option>allowance</option>
+</select>
+</div>
+</sc-if>
+<div style="margin-top:24px;font-size:16.5px;line-height:1.6;color:#605d5d;max-width:48ch;text-wrap:pretty">Two things it refuses to guess, because both move money: an unrecognised pass type, and an unreadable financial year end. Both come back reported against the row.</div>
+</div>
+<div>
+<sc-for list="{{ fields }}" as="fd" hint-placeholder-count="4">
+<div style="margin-bottom:24px">
+<div style="font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:10.5px;letter-spacing:.16em;color:#7d7979;text-transform:uppercase">{{ fd.label }}</div>
+<input value="{{ fd.value }}" style="width:100%;margin-top:9px;font-size:18px;padding:12px 14px;border:1px solid #d7d3d3;border-radius:2px;background:#f8f4f4;color:#201e1d" style-focus="border-color:#0088b0;outline:2px solid #0088b0;outline-offset:2px">
+<div style="font-size:15px;color:#7d7979;margin-top:7px;line-height:1.5">{{ fd.help }}</div>
+</div>
+</sc-for>
+<button onClick="{{ toggleMapping }}" style="cursor:pointer;background:#201e1d;color:#f3f2f2;border:1px solid #201e1d;border-radius:2px;padding:14px 26px;font-size:17px;margin-top:4px" style-hover="background:#444141">Build the vault</button>
+<div style="font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:12px;color:#7d7979;margin-top:14px">12 PEOPLE · 6 RULES · FIRST FINDING IN UNDER TWO MINUTES</div>
+</div>
+</div>
+</div>
+
+
+
+</div>
+
+<sc-if value="{{ openRule }}" hint-placeholder-val="{{ false }}">
+<div style="position:fixed;inset:0;background:rgba(32,30,29,.32);z-index:40" onClick="{{ close }}"></div>
+<div style="position:fixed;top:0;right:0;bottom:0;width:min(680px,94vw);background:#f3f2f2;z-index:41;overflow:auto;box-shadow:0 12px 32px rgba(45,43,43,.22);animation:slidein .22s ease-out">
+<div style="padding:40px clamp(24px,4vw,56px) 96px">
+<div style="display:flex;gap:20px;align-items:baseline">
+<div style="font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:11px;letter-spacing:.14em;color:#7d7979;text-transform:uppercase">{{ openRule.path }}</div>
+<button onClick="{{ close }}" style="margin-left:auto;cursor:pointer;background:transparent;border:1px solid #d7d3d3;border-radius:2px;padding:6px 12px;font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:11px;letter-spacing:.1em;color:#605d5d" style-hover="border-color:#201e1d;color:#201e1d">CLOSE</button>
+</div>
+<h3 style="margin:22px 0 0;font-weight:400;font-size:30px;line-height:1.24;letter-spacing:-.01em;text-wrap:pretty">{{ openRule.title }}</h3>
+<div style="margin-top:28px;border-top:1px solid #201e1d">
+<sc-for list="{{ openRule.frontmatter }}" as="fm" hint-placeholder-count="8">
+<div style="display:grid;grid-template-columns:180px minmax(0,1fr);gap:16px;padding:10px 0;border-bottom:1px solid #eae7e7;font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:12.5px">
+<span style="color:#7d7979">{{ fm.k }}</span>
+<span style="color:{{ fm.ink }}">{{ fm.v }}</span>
+</div>
+</sc-for>
+</div>
+<sc-for list="{{ openRule.sections }}" as="sec" hint-placeholder-count="4">
+<div style="margin-top:38px">
+<div style="font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:10.5px;letter-spacing:.16em;color:#7d7979;text-transform:uppercase">{{ sec.heading }}</div>
+<p style="margin:12px 0 0;font-size:18px;line-height:1.68;text-wrap:pretty">{{ sec.body }}</p>
+</div>
+</sc-for>
+<div style="margin-top:44px;padding-top:22px;border-top:1px solid #d7d3d3;font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:12px;line-height:1.9;color:#7d7979">
+{{ openRule.footer }}<br><a href="{{ openRule.resource }}" target="_blank" rel="noopener">{{ openRule.resource }}</a>
+</div>
+</div>
+</div>
+</sc-if>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;inForceTreatment&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;banner&quot;,&quot;inline&quot;],&quot;default&quot;:&quot;banner&quot;,&quot;tsType&quot;:&quot;\&quot;banner\&quot; | \&quot;inline\&quot;&quot;,&quot;section&quot;:&quot;Emphasis&quot;},&quot;showProvenance&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Emphasis&quot;}}">
+const RULES = [
+  {
+    id: "cpf-ow", clock: "law", clockLabel: "Law moved", path: "rules/cpf-ow-ceiling-2026.md",
+    when: "−248d", inForce: true,
+    title: "CPF Ordinary Wage ceiling rose from S$7,400 to S$8,000",
+    consequence: "In force since 1 January 2026. Staff 01 earns above the old ceiling, so an extra S$600 a month has been CPF-liable for eight months.",
+    figure: "S$1,224", figureNote: "a year, per head · quoted",
+    host: "cpf.gov.sg", verified: "2 days ago",
+    resource: "https://www.cpf.gov.sg/service/article/what-is-the-ordinary-wage-ow-ceiling",
+    affected: [{ who: "Staff 01 · Co-founder and CEO", detail: "S$8,200/mo · over the old S$7,400" }],
+    cost: "For each affected employee, an extra S$600 of monthly wage becomes CPF-liable. At the 17% employer rate for staff aged 55 and below, that is up to S$102 a month, or S$1,224 a year, per affected employee.",
+    next: "Count how many CPF-liable staff earn above S$7,400. Multiply by up to S$1,224 and add it to the payroll budget. This one is already in force. If it has not been reflected, the payroll figures being used for planning are understated.",
+    chain: [
+      { mark: "01", text: "Figure printed on cpf.gov.sg", ok: true },
+      { mark: "02", text: "Read by a person 4 Sep 2026", ok: true },
+      { mark: "03", text: "Machine re-read today, could not confirm: page is JS-rendered", ok: false },
+      { mark: "04", text: "Escalated to a human 5 Sep 2026, still open", ok: false }
+    ],
+    frontmatter: [
+      ["clock", "law"], ["effective", "2026-01-01"], ["applies_to", "all_employees"],
+      ["trigger_field", "monthly_salary"], ["threshold_before", "7400"], ["threshold_after", "8000"],
+      ["unit", "SGD_per_month"], ["bites", "above"], ["severity", "medium"],
+      ["verified", "2026-09-04  (human)"], ["checked", "2026-09-06  (machine)"], ["source_render", "js"]
+    ],
+    sections: [
+      ["What changes", "The Ordinary Wage ceiling, the maximum monthly salary on which CPF contributions are payable, rises from S$7,400 to S$8,000. This is the final step of an increase schedule that ran in four stages from 1 September 2023. Unchanged: the Additional Wage ceiling remains S$102,000 minus total Ordinary Wage subject to CPF for the year, and the CPF Annual Limit remains S$37,740."],
+      ["Who it hits", "Only employees earning above S$7,400 a month who are CPF-liable (citizens and PRs). Staff below that ceiling are unaffected. Foreign pass holders do not attract CPF."],
+      ["Cost", "For each affected employee, an extra S$600 of monthly wage becomes CPF-liable. At the 17% employer rate for staff aged 55 and below, that is up to S$102 a month, or S$1,224 a year, per affected employee."],
+      ["Next step", "Count how many CPF-liable staff earn above S$7,400. Multiply by up to S$1,224 and add it to the payroll budget. This one is already in force. If it has not been reflected, the payroll figures being used for planning are understated."]
+    ],
+    footer: "CPF BOARD · VERIFIED 2026-09-04: OW CEILING S$7,400 → S$8,000 IN 2026, FINAL STEP OF FOUR SINCE 1 SEP 2023"
+  },
+  {
+    id: "s-pass", clock: "law", clockLabel: "Law moved", path: "rules/s-pass-qualifying-salary-2027.md",
+    when: "+117d", inForce: false,
+    title: "S Pass qualifying salary rises to S$3,600 on 1 January 2027",
+    consequence: "Staff 04 is paid S$3,400, S$200 a month short of the entry floor, and their pass expires 20 February 2028. A failed renewal has no remedy.",
+    figure: "S$2,400", figureNote: "a year · from your payroll",
+    host: "mom.gov.sg", verified: "2 days ago",
+    resource: "https://www.mom.gov.sg/passes-and-permits/s-pass/eligibility",
+    affected: [{ who: "Staff 04 · Data Engineer", detail: "S$3,400/mo vs S$3,600 floor · pass expires 2028-02-20" }],
+    cost: "The gap between current salary and the applicable age-banded floor, times 12, plus employer CPF where the holder is CPF-liable. A holder at S$3,400 facing a S$3,600 floor costs an extra S$2,400 a year at the entry band alone. If the salary is not raised, the renewal fails and the worker cannot continue.",
+    next: "List every S Pass holder with their pass expiry date and current salary. For anyone whose pass expires on or after 1 Jan 2028, look up their exact age-banded requirement on the MOM page and calculate the gap now. Decide well before renewal whether to raise the salary, restructure the role, or hire locally. A failed renewal has no remedy.",
+    chain: [
+      { mark: "01", text: "Figure printed on mom.gov.sg", ok: true },
+      { mark: "02", text: "Read by a person 4 Sep 2026", ok: true },
+      { mark: "03", text: "Curator re-read and rewrote the figure today, 06:12", ok: true },
+      { mark: "04", text: "Five gates passed · your veto is still open", ok: true }
+    ],
+    frontmatter: [
+      ["clock", "law"], ["effective", "2027-01-01"], ["applies_to", "s_pass_holder"],
+      ["trigger_field", "monthly_salary"], ["threshold_before", "3300"], ["threshold_after", "3600"],
+      ["unit", "SGD_per_month"], ["bites", "below"], ["severity", "high"],
+      ["verified", "2026-09-04  (human)"], ["checked", "2026-09-06  (machine)"]
+    ],
+    sections: [
+      ["What changes", "The S Pass minimum qualifying salary rises. It is not a flat figure. It increases progressively with the holder's age from age 23. All sectors except financial services: S$3,300 today rising with age to S$4,800 at 45+; from 1 Jan 2027, S$3,600 rising to S$5,100. Financial services: S$3,800 rising to S$5,650; from 1 Jan 2027, S$4,000. The new rates apply to new applications submitted from 1 Jan 2027, and to renewals of passes expiring from 1 Jan 2028."],
+      ["Who it hits", "Any S Pass holder paid near the current floor, especially one whose pass expires on or after 1 Jan 2028. Because the requirement scales with age, an older holder needs materially more than the entry figure, check the age-banded table on the MOM page for the exact number, do not assume the entry rate."],
+      ["Cost", "The gap between current salary and the applicable age-banded floor, times 12, plus employer CPF where the holder is CPF-liable. A holder at S$3,400 facing a S$3,600 floor costs an extra S$2,400 a year at the entry band alone. If the salary is not raised, the renewal fails and the worker cannot continue."],
+      ["Next step", "List every S Pass holder with their pass expiry date and current salary. For anyone whose pass expires on or after 1 Jan 2028, look up their exact age-banded requirement on the MOM page and calculate the gap now. Decide well before renewal whether to raise the salary, restructure the role, or hire locally. A failed renewal has no remedy."]
+    ],
+    footer: "MOM · VERIFIED 2026-09-04: ENTRY S$3,300 → S$3,600 FROM 1 JAN 2027; 45+ BAND S$4,800 → S$5,100"
+  },
+  {
+    id: "ep", clock: "law", clockLabel: "Law moved", path: "rules/ep-qualifying-salary-2027.md",
+    when: "+117d", inForce: false,
+    title: "Employment Pass qualifying salary rises to S$6,000 on 1 January 2027",
+    consequence: "Staff 07 is at S$5,800. Salary is only the first hurdle. COMPASS must also score at least 40 points, and clearing the floor does not decide it.",
+    figure: "S$2,400", figureNote: "a year · from your payroll",
+    host: "mom.gov.sg", verified: "2 days ago",
+    resource: "https://www.mom.gov.sg/passes-and-permits/employment-pass/eligibility",
+    affected: [{ who: "Staff 07 · Senior Backend Engineer", detail: "S$5,800/mo vs S$6,000 floor · pass expires 2028-04-10" }],
+    cost: "The gap between current salary and the applicable age-banded floor, times 12. An EP holder at S$5,800 against a S$6,000 entry floor is S$2,400 a year. A 40-something on a package set years ago can be tens of thousands short. A failed renewal means losing the person, which for a startup usually means losing the ability to deliver whatever they were building.",
+    next: "For each EP holder, look up their exact age-banded requirement on the MOM page. Do not use the entry figure. Then check the COMPASS score separately, because salary alone does not decide it. Where a renewal is at risk, start restructuring the package or the role at least two quarters ahead.",
+    chain: [
+      { mark: "01", text: "Figure printed on mom.gov.sg", ok: true },
+      { mark: "02", text: "Read by a person 4 Sep 2026", ok: true },
+      { mark: "03", text: "Machine re-read today, unchanged, 0 tokens", ok: true },
+      { mark: "04", text: "COMPASS threshold verified separately, 40 points", ok: true }
+    ],
+    frontmatter: [
+      ["clock", "law"], ["effective", "2027-01-01"], ["applies_to", "ep_holder"],
+      ["trigger_field", "monthly_salary"], ["threshold_before", "5600"], ["threshold_after", "6000"],
+      ["unit", "SGD_per_month"], ["bites", "below"], ["severity", "high"],
+      ["verified", "2026-09-04  (human)"], ["checked", "2026-09-06  (machine)"]
+    ],
+    sections: [
+      ["What changes", "Two hurdles, and the salary is only the first. Stage 1, qualifying salary rises progressively with age from 23: all sectors except financial services S$5,600 today rising to S$10,700 at 45+; from 1 Jan 2027, S$6,000 rising to S$11,500. Stage 2, COMPASS scores candidates across six criteria and an applicant must score at least 40 points. Meeting the salary floor is not sufficient."],
+      ["Who it hits", "Every EP holder and every EP application. The age scaling is severe: at 45+ the requirement is nearly double the entry figure, so a founder or senior hire in their forties faces a far higher bar than the headline number suggests."],
+      ["Cost", "The gap between current salary and the applicable age-banded floor, times 12. An EP holder at S$5,800 against a S$6,000 entry floor is S$2,400 a year. A 40-something on a package set years ago can be tens of thousands short."],
+      ["Next step", "For each EP holder, look up their exact age-banded requirement on the MOM page. Do not use the entry figure. Then check the COMPASS score separately, because salary alone does not decide it. Confirm the exact renewal cut-off date on the MOM page before relying on a timeline; this note verifies the salary tables and the COMPASS threshold, not the renewal cut-off."]
+    ],
+    footer: "MOM · VERIFIED 2026-09-04: ENTRY S$5,600 → S$6,000 FROM 1 JAN 2027; COMPASS MINIMUM 40 POINTS"
+  },
+  {
+    id: "cpf-senior", clock: "law", clockLabel: "Law moved", path: "rules/cpf-senior-worker-rates-2027.md",
+    when: "+117d", inForce: false,
+    title: "CPF rates rise for workers aged 55 to 65 on 1 January 2027",
+    consequence: "Staff 02 sits in the 55-59 band. The employer share rises 0.5 points; their own take-home drops 1 point, which is a conversation to have before January.",
+    figure: "in its cost note", figureNote: "not arithmetic from the vault",
+    host: "cpf.gov.sg", verified: "2 days ago",
+    resource: "https://www.cpf.gov.sg/employer/infohub/news/cpf-related-announcements/new-contribution-rates",
+    affected: [{ who: "Staff 02 · Finance and Ops Lead", detail: "age band 55-59 · employer 16% → 16.5%" }],
+    cost: "0.5% of monthly wage per affected employee on the employer side. For a staff member at S$6,000 a month, that is S$30 a month or S$360 a year. Modest per head. It matters when several staff sit in these bands, and it compounds with the 2026 OW ceiling rise.",
+    next: "Count staff who will be above 55 on 1 Jan 2027, including anyone crossing 55 during 2026. Budget 0.5% of their wages. Separately, tell the 55-60 band that their take-home drops by 1% so it is not a surprise in the January payslip.",
+    chain: [
+      { mark: "01", text: "Rate table printed on cpf.gov.sg", ok: true },
+      { mark: "02", text: "Read by a person 4 Sep 2026", ok: true },
+      { mark: "03", text: "Machine re-read today, unchanged, 0 tokens", ok: true },
+      { mark: "04", text: "No annual gap derived: an employer CPF rate is not in the vault", ok: false }
+    ],
+    frontmatter: [
+      ["clock", "law"], ["effective", "2027-01-01"], ["applies_to", "employees_over_55"],
+      ["trigger_field", "age_band"], ["threshold_before", "16"], ["threshold_after", "16.5"],
+      ["unit", "percent"], ["bites", "band"], ["severity", "medium"],
+      ["verified", "2026-09-04  (human)"], ["checked", "2026-09-06  (machine)"]
+    ],
+    sections: [
+      ["What changes", "For wages earned from 1 January 2027, on monthly wages above S$750: the above-55-to-60 band goes from 16% to 16.5% employer and 18% to 19% employee; the above-60-to-65 band from 12.5% to 13% on both sides. Bands 55-and-below, 65-70 and 70+ are unchanged. The increased contributions go entirely to the Retirement Account up to the Full Retirement Sum."],
+      ["Who it hits", "CPF-liable employees aged above 55 and up to 65. Both bands see the employer share rise by 0.5 percentage points. Employees in the 55-60 band also take a 1 percentage point cut in take-home pay, which is a conversation to have before it lands, not after."],
+      ["Cost", "0.5% of monthly wage per affected employee on the employer side. For a staff member at S$6,000 a month, that is S$30 a month or S$360 a year. Modest per head. It matters when several staff sit in these bands, and it compounds with the 2026 OW ceiling rise."],
+      ["Next step", "Count staff who will be above 55 on 1 Jan 2027, including anyone crossing 55 during 2026. Budget 0.5% of their wages. Separately, tell the 55-60 band that their take-home drops by 1% so it is not a surprise in the January payslip."]
+    ],
+    footer: "CPF BOARD · VERIFIED 2026-09-04: 55-60 EMPLOYER 16% → 16.5%, EMPLOYEE 18% → 19%"
+  },
+  {
+    id: "gst", clock: "growth", clockLabel: "You grew", path: "rules/gst-registration-threshold.md",
+    when: "standing", inForce: false,
+    title: "GST registration becomes compulsory above S$1 million taxable turnover",
+    consequence: "Turnover runs at S$862,000 and is closing. The obligation begins when you can reasonably forecast crossing, not when you cross, and then you have 30 days.",
+    figure: "S$862,000", figureNote: "of S$1,000,000",
+    host: "iras.gov.sg", verified: "2 days ago",
+    resource: "https://www.iras.gov.sg/taxes/goods-services-tax-(gst)/gst-registration-deregistration/do-i-need-to-register-for-gst",
+    affected: [{ who: "Harborlight Analytics Pte Ltd", detail: "run-rate S$862,000/yr · 86% of the threshold" }],
+    cost: "Late notification: a fine of up to S$10,000 plus a penalty equal to 10% of the GST due. Fines and penalties are generally waived if you voluntarily disclose the late notification when you submit the registration. Beyond the penalty, registration means charging 9% GST on sales: repricing decisions, contract amendments, and invoicing changes that take weeks to work through.",
+    next: "Check your rolling 12-month taxable turnover today. If a reasonable forecast puts you above S$1 million within 12 months, the 30-day clock has already started. Apply now. If you are approaching but not yet forecasting a crossing, set a review date and decide in advance whether you absorb the 9% or pass it to customers.",
+    chain: [
+      { mark: "01", text: "Threshold printed on iras.gov.sg", ok: true },
+      { mark: "02", text: "Read by a person 4 Sep 2026", ok: true },
+      { mark: "03", text: "Machine re-read today, unchanged, 0 tokens", ok: true },
+      { mark: "04", text: "Turnover figure came from your vault, not a government page", ok: false }
+    ],
+    frontmatter: [
+      ["clock", "growth"], ["effective", "null"], ["applies_to", "company"],
+      ["trigger_field", "annual_revenue_run_rate"], ["threshold_after", "1000000"],
+      ["unit", "SGD_per_year"], ["bites", "forecast"], ["severity", "high"],
+      ["verified", "2026-09-04  (human)"], ["checked", "2026-09-06  (machine)"]
+    ],
+    sections: [
+      ["What changes", "Nothing about the law changes. You cross a line. Businesses must monitor their own sales and register once annual taxable turnover exceeds S$1 million. Retrospective view: turnover for the calendar year exceeded S$1 million: apply between 1 and 30 January of the following year, registration takes effect 1 March. Prospective view: if you can reasonably expect to exceed S$1 million in the next 12 months: apply within 30 days of the forecast date."],
+      ["Who it hits", "Any growing company approaching S$1 million in taxable turnover. The prospective test is the one founders miss: the obligation begins when you can reasonably forecast crossing, not when you actually cross."],
+      ["Cost", "Late notification: a fine of up to S$10,000 plus a penalty equal to 10% of the GST due. Fines and penalties are generally waived if you voluntarily disclose the late notification when you submit the registration."],
+      ["Next step", "Check your rolling 12-month taxable turnover today. If a reasonable forecast puts you above S$1 million within 12 months, the 30-day clock has already started. Apply now."]
+    ],
+    footer: "IRAS · VERIFIED 2026-09-04: THRESHOLD S$1M, RETROSPECTIVE WINDOW 1-30 JAN, PROSPECTIVE 30 DAYS"
+  },
+  {
+    id: "acra", clock: "recurring", clockLabel: "Date arriving", path: "rules/acra-annual-return.md",
+    when: "+328d", inForce: false,
+    title: "ACRA annual return due 31 July 2027",
+    consequence: "Seven months after your own financial year end of 31 December, a date only your FYE can produce, which is why a generic calendar reminder does not help.",
+    figure: "S$300", figureNote: "if up to 3 months late",
+    host: "acra.gov.sg", verified: "2 days ago",
+    resource: "https://www.acra.gov.sg/manage/companies/legal-requirements-common-offences/filing-annual-returns-companies/deadline-requirements/",
+    affected: [{ who: "Harborlight Analytics Pte Ltd", detail: "FYE 31 December · deadline 31 July 2027" }],
+    cost: "Two-tier penalty framework, for annual lodgments due on or after 14 January 2022: S$300 if filed within 3 months after the due date, S$600 if more than 3 months after. Beyond the fee, persistent late filing is an enforcement matter for the directors personally, not just the company.",
+    next: "Take your FYE, add 7 months, and put that date in the calendar with a 6-week warning. If a corporate secretary files on your behalf, confirm in writing who owns the deadline, the penalty and the director liability stay with you regardless of who was supposed to file.",
+    chain: [
+      { mark: "01", text: "Deadline rule printed on acra.gov.sg", ok: true },
+      { mark: "02", text: "Read by a person 4 Sep 2026", ok: true },
+      { mark: "03", text: "Machine re-read today, unchanged, 0 tokens", ok: true },
+      { mark: "04", text: "Date derived from your FYE in the vault, not from ACRA", ok: false }
+    ],
+    frontmatter: [
+      ["clock", "recurring"], ["effective", "null"], ["applies_to", "company"],
+      ["trigger_field", "financial_year_end"], ["threshold_after", "7"],
+      ["unit", "months"], ["bites", "always"], ["severity", "medium"],
+      ["verified", "2026-09-04  (human)"], ["checked", "2026-09-06  (machine)"]
+    ],
+    sections: [
+      ["What changes", "Nothing changes in the law. The date arrives. A private (non-listed) company must file its annual return with ACRA within 7 months after its financial year end. Worked example from ACRA: FYE 31 December 2025 gives a filing deadline of 31 July 2026."],
+      ["Who it hits", "Every private company, every year, on a date derived from its own FYE, which is why no two companies share a deadline and why a generic calendar reminder does not help."],
+      ["Cost", "Two-tier penalty framework: S$300 within 3 months after the due date, S$600 more than 3 months after. ACRA's example: deadline 31 July 2026, filed 20 August 2026, S$300."],
+      ["Next step", "Take your FYE, add 7 months, and put that date in the calendar with a 6-week warning. If a corporate secretary files on your behalf, confirm in writing who owns the deadline."]
+    ],
+    footer: "ACRA · VERIFIED 2026-09-04: 7 MONTHS AFTER FYE; S$300 WITHIN 3 MONTHS LATE, S$600 BEYOND"
+  }
+];
+
+const FILTERS = [
+  ["all", "All"], ["law", "Law moved"], ["growth", "You grew"],
+  ["recurring", "Date arriving"], ["force", "In force"]
+];
+
+const ANSWERS = {
+  "what changes for us in the next 90 days?": [
+    "Nothing new lands in the next 90 days, and that is the wrong question to stop at, because one rule is already behind you.",
+    "The CPF Ordinary Wage ceiling rose from S$7,400 to S$8,000 on 1 January 2026, 248 days ago. Staff 01 earns S$8,200, so an extra S$600 a month became CPF-liable at the 17% employer rate: up to S$1,224 a year that was never budgeted (cpf.gov.sg).",
+    "Then three rules land together on 1 January 2027, in 117 days. The S Pass floor rises to S$3,600 and Staff 04 is at S$3,400, S$2,400 a year short (mom.gov.sg). The EP floor rises to S$6,000 and Staff 07 is at S$5,800, another S$2,400 a year (mom.gov.sg). CPF rates rise 0.5 percentage points on the employer side for the 55-65 band, and Staff 02 sits in it (cpf.gov.sg).",
+    "Two standing items: taxable turnover of S$862,000 is inside forecast range of the S$1m GST threshold, where the obligation starts at the forecast and not the crossing (iras.gov.sg); and the ACRA annual return falls due 31 July 2027 (acra.gov.sg)."
+  ],
+  "which of my staff are affected, and by how much?": [
+    "Four of your twelve, and only two of them price themselves in arithmetic.",
+    "Staff 04, Data Engineer, S Pass at S$3,400 a month against a S$3,600 floor from 1 January 2027, S$2,400 a year, and their pass expires 20 February 2028, so the renewal is the deadline that matters (mom.gov.sg).",
+    "Staff 07, Senior Backend Engineer, EP at S$5,800 against a S$6,000 floor, S$2,400 a year, plus a separate COMPASS score of at least 40 points which the salary does not settle (mom.gov.sg).",
+    "Staff 01 is over the old CPF ceiling at S$8,200, priced at up to S$1,224 a year in the rule's own cost note. Staff 02 is in the 55-59 band and takes a 0.5 point employer rate rise; that one is not arithmetic over two vault figures, so Ante quotes the note instead of deriving a number (cpf.gov.sg)."
+  ],
+  "what has ante refused to write, and why?": [
+    "One open refusal, raised 5 September 2026.",
+    "The curator fetched the CPF Ordinary Wage ceiling page and the words “Ordinary”, “Wage” and “ceiling” did not appear in the response at all. The page is almost certainly JS-rendered, so the fetcher cannot see the figure it is meant to confirm.",
+    "The verdict failed gate three: the quote must appear verbatim on the page that was fetched. Nothing was written to the rule note, the stale snapshot was deliberately kept so tomorrow's sweep raises it again, and an alert went to a human. The figure on the board is still the one a person read on 4 September (cpf.gov.sg)."
+  ]
+};
+
+const GATES = [
+  ["1", "The verdict is an applicable change, figure_changed or date_changed", "PASS"],
+  ["2", "Confidence is high; a hedge is refused", "PASS"],
+  ["3", "The quote appears verbatim on the page we fetched, at least 20 characters", "PASS · 122 CHARS"],
+  ["4", "The new figure appears inside the quote it was supposedly read from", "PASS · S$3,600"],
+  ["5", "Not a no-op, and the rule is not flapping, changed twice or less in 30 days", "PASS · 1 IN 30D"]
+];
+
+const FRESH = [
+  ["GST registration threshold", "2d", "today", true],
+  ["S Pass qualifying salary", "2d", "rewritten", true],
+  ["EP qualifying salary + COMPASS", "2d", "today", true],
+  ["CPF Ordinary Wage ceiling", "2d", "unverifiable", false],
+  ["CPF senior worker rates", "2d", "today", true],
+  ["ACRA annual return", "2d", "today", true]
+];
+
+const FIELDS = [
+  ["Company and UEN", "Harborlight Analytics Pte Ltd · 202318472K", "Written to company/profile.md. Human-owned from then on."],
+  ["Financial year end", "31 December", "Refused if unreadable. The wrong FYE moves the ACRA deadline by months."],
+  ["Annual revenue run-rate", "S$862,000", "Judges the GST threshold on forecast, not on the crossing."],
+  ["Where the brief goes", "founder@harborlight.example", "One email a morning, and only when something moved."]
+];
+
+class Component extends DCLogic {
+  state = { filter: "all", open: null, vetoed: false, mapping: false, asked: false, q: "what changes for us in the next 90 days?" };
+
+  renderVals() {
+    const f = this.state.filter;
+    const list = RULES.filter((r) =>
+      f === "all" ? true : f === "force" ? r.inForce : r.clock === f);
+
+    const counts = {
+      all: RULES.length,
+      law: RULES.filter((r) => r.clock === "law").length,
+      growth: RULES.filter((r) => r.clock === "growth").length,
+      recurring: RULES.filter((r) => r.clock === "recurring").length,
+      force: RULES.filter((r) => r.inForce).length
+    };
+
+    const open = RULES.find((r) => r.id === this.state.open);
+    const answer = ANSWERS[this.state.q] || ANSWERS["what changes for us in the next 90 days?"];
+
+    return {
+      banner: (this.props.inForceTreatment ?? "banner") === "banner",
+      inlineForce: (this.props.inForceTreatment ?? "banner") === "inline",
+      provenance: this.props.showProvenance ?? true,
+      gates: this.props.showGates ?? true,
+
+      filters: FILTERS.map(([id, label]) => ({
+        label, count: counts[id],
+        pick: () => this.setState({ filter: id })
+      })),
+
+      findings: list.map((r) => ({
+        ...r,
+        whenInk: r.inForce ? "#aa0b56" : r.when === "standing" ? "#7d7979" : "#201e1d",
+        figSize: r.figure.startsWith("S$") ? "26px" : "15px",
+        figInk: r.inForce ? "#aa0b56" : r.figure.startsWith("S$") ? "#201e1d" : "#7d7979",
+        chain: r.chain.map((c) => ({ ...c, ink: c.ok ? "#201e1d" : "#aa0b56" })),
+        open: () => this.setState({ open: r.id }),
+        copy: () => {
+          const text = [
+            r.title,
+            "Lands: " + r.when + (r.inForce ? " (ALREADY IN FORCE)" : ""),
+            "Affected: " + r.affected.map((a) => a.who + ", " + a.detail).join("; "),
+            "", "Cost:", r.cost, "", "Next step:", r.next, "", "Source: " + r.resource
+          ].join("\n");
+          if (navigator.clipboard) navigator.clipboard.writeText(text).catch(() => {});
+        }
+      })),
+
+      ledgerNote: f === "all"
+        ? "Two of the six price themselves from your payroll arithmetic, S$4,800 a year between them. The other four are priced in the human-written cost note on each rule, which Ante quotes rather than paraphrases. Half a bill that is provable beats a whole one that is not."
+        : "Filtered view: " + list.length + " of 6 findings. Clear the filter to see the whole bill.",
+
+      gateList: GATES.map(([n, text, verdict]) => ({ n, text, verdict })),
+
+      vetoLabel: this.state.vetoed ? "Reverted, rule restored from .history/" : "Undo this change",
+      vetoNote: this.state.vetoed
+        ? "The rule note is byte-identical to its 4 September version again, and the curator will not re-apply this change without a human."
+        : "One click restores the previous rule note from vault/.history/ and freezes the rule for a human to read.",
+      veto: () => this.setState({ vetoed: !this.state.vetoed }),
+
+      freshness: FRESH.map(([short, human, machine, ok]) => ({
+        short, human, machine, mInk: ok ? "#605d5d" : "#aa0b56"
+      })),
+
+      question: this.state.q,
+      onQuestion: (e) => this.setState({ q: e.target.value }),
+      asked: this.state.asked,
+      ask: () => this.setState({ asked: true }),
+      suggestions: Object.keys(ANSWERS).map((text) => ({
+        text, pick: () => this.setState({ q: text, asked: false })
+      })),
+      answer: answer.map((text) => ({ text })),
+      metrics: "SCHEMA 1/1 · TOOLS 6/6 · TURNS 4 OF 8 · FIDELITY 6/6 CLAIMS CITED · 17.2K IN / 1.9K OUT",
+
+      fields: FIELDS.map(([label, value, help]) => ({ label, value, help })),
+      mapping: this.state.mapping,
+      toggleMapping: () => this.setState({ mapping: !this.state.mapping }),
+
+      openRule: open ? {
+        ...open,
+        frontmatter: open.frontmatter.map(([k, v]) => ({
+          k, v, ink: k === "verified" ? "#006786" : k === "source_render" ? "#aa0b56" : "#201e1d"
+        })),
+        sections: open.sections.map(([heading, body]) => ({ heading, body }))
+      } : null,
+      close: () => this.setState({ open: null })
+    };
+  }
+}
+</script>
+</body>
+</html>

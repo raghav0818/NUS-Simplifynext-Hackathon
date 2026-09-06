@@ -1,473 +1,492 @@
 # Ante
 
 **Regulatory early warning for Singapore startup founders.**
+The law moves. Your company moves. Ante notices which one just made you non-compliant, tells
+you what it costs, and proves every figure against the government page it came from.
 
-A founder doesn't miss a deadline because they're lazy. They miss it because nobody told them
-the number moved. Ante watches Singapore's rules and the company's own figures, and warns
-when the two are about to collide — with a `.gov.sg` link attached to every claim.
-
-Two things are going on, and it matters that they're separate:
-
-| | Who starts it | What it does |
-|---|---|---|
-| **advisor** | the founder asks a question | answers it from the vault, with citations |
-| **curator** | nobody — it runs daily | checks the law still says what we claim it says |
-
-Everything both of them know lives in one folder of markdown files (`vault/`). That folder is
-the product. The Python is just how it gets read and written.
+> SimplifyNext **IGNITE Agentic AI Hackathon 2026** · Digital track
+> Python 3.13 · LangGraph · AWS Bedrock (Claude Haiku 4.5) · FastAPI
 
 ---
 
-## The core idea: three clocks
-
-A founder gets blindsided in exactly three ways, and the vault tags every rule with which one:
-
-- **`law`** — the rule moved. Same company, new number. *(S Pass floor rises to S$3,600 in 2027.)*
-- **`growth`** — the company moved. Same rule, and you just grew into it. *(Revenue crosses S$1m → GST registration becomes compulsory.)*
-- **`recurring`** — neither moved, a date just arrived. *(ACRA annual return, 7 months after your own FYE.)*
-
-Calendar apps only handle the third one. The first two are where the money is.
-
----
-
-## The layers
-
-Bottom to top. Each layer only trusts the one below it.
-
-### 1. `vault/` — the knowledge base (markdown, human-owned)
-
-Plain `.md` files with YAML frontmatter. Open it in Obsidian and browse it like a wiki; it's
-also just text, so git diffs are readable and an agent can grep it.
-
-```
-vault/
-  rules/          6 Singapore rules, one file each — the note IS the retrieval chunk
-  company/        Harborlight Analytics Pte Ltd (synthetic demo customer)
-  people/         12 synthetic staff — salary, pass type, age band
-  counterparties/ agent-written: watched entities and their ACRA status
-  alerts/         agent-written: what was raised, with dollar impact and deadline
-  log.md          agent-written: chronological run history
-  _SCHEMA.md      the contract between the markdown and the code — read this one first
-```
-
-It's an [Open Knowledge Format](https://cloud.google.com/blog/products/data-analytics/how-the-open-knowledge-format-can-improve-data-sharing)
-v0.1 bundle: every file has a non-empty `type`, only five types exist
-(`rule` · `company` · `person` · `counterparty` · `alert`), links are standard markdown
-(never `[[wikilinks]]`), and `index.md` / `log.md` are reserved names.
-
-**Two fields do the joining.** A rule says `applies_to: s_pass_holder` and
-`trigger_field: monthly_salary`; the code matches that against the roster and pulls each
-person's own salary to compare. The vocabulary is tiny and matched by exact string, so it has
-to be spelled identically on both sides — that's the whole integration surface.
-
-**Three rules about who writes what**, and they are the safety story:
-
-1. `# Next step` in a rule note is **written by a human**. The agent quotes it. It never
-   invents regulatory advice.
-2. `verified:` is **written by a human** — the day a person read the government page. The
-   machine writes `checked:` and `confirmed:` instead. Different claims, kept apart.
-3. The agent can only write to `alerts/` and `counterparties/`. `rules/`, `people/` and
-   `company/` are human-owned and writes to them are refused.
-
-All person records are **synthetic**. Our own rule base contains the PDPA; shipping real
-employee data inside it would breach the thing we're building.
-
-### 2. `vault.py` — read/write the vault (no LangChain, no AWS)
-
-Four functions the agent eventually calls as tools, plus two extras:
-
-- `vault_search(query)` — keyword-score the rules, return **summaries only**. Search first.
-- `vault_read(path)` — one note in full: frontmatter + body.
-- `roster_scan(applies_to, on=None)` — everyone in that category, with their numbers. Or the
-  company's own figures when `applies_to: company`. `on` is the date to judge them at —
-  see "an age band is a snapshot" below.
-- `vault_write(path, frontmatter, body)` — refuses anything outside `alerts/` and
-  `counterparties/`, refuses path traversal (`alerts/../rules/x.md` is checked *after*
-  resolving), refuses a note with no `type`.
-- `validate()` — the integration guard. Fails loudly when the markdown and the code drift
-  apart, including *"this rule's `applies_to` matches nobody"* — a rule that joins to no one is
-  a dead rule.
-- `upcoming()` — what lands in the window, looking **backwards too**. A rule that took effect
-  eight months ago and was never budgeted for is the expensive kind, not the irrelevant kind.
-- `exposure()` — **the join, done in Python.** Applies each rule's own `bites` test to the
-  people it touches and returns only those genuinely on the wrong side, each carrying an
-  `annual_gap` where the shortfall is arithmetic (see below) and `None` where it is not.
-- `section(body, heading)` — one `# Heading` block of a note, for quoting a human's `# Cost`
-  and `# Next step` wording to the UI verbatim rather than paraphrasing it.
-
-`roster_scan` returns everyone in a *category*; `exposure()` returns everyone who *breaches*.
-The difference is the whole reason `bites` exists.
-
-**An age band is a snapshot, and rules bite in the future.** Someone banded `50-54` today
-who turns 55 in three weeks *is* in scope for a rule effective 1 Jan 2027 — the CPF
-senior-worker note says so itself: *"including anyone crossing 55 during 2026."* Reporting
-them only from their birthday would drop the finding for exactly as long as it is still
-cheap to act on. So `upcoming()` judges each rule's roster **on the day that rule lands**,
-and ingest records `band_changes_on` (the date they enter the next band) whenever the
-payroll gave a real date of birth. A CSV that gave only a bare age cannot be projected —
-there is no birthday to project from — so the band stands as recorded and the upload
-*says so* in `problems` rather than leaving a silent gap.
-
-**Why `annual_gap` is missing on four of the six findings.** The distance between a salary
-and the floor it must clear, times twelve, is derived from two figures the vault already
-holds and nothing else — so `_gap()` computes it, and the self-check asserts it against what
-the human wrote in `# Cost` (both notes say "S$2,400 a year"; Python has to agree to the
-dollar). An employer CPF rate and a late-filing penalty tier are *not* in the frontmatter,
-so deriving those would mean inventing a figure. Those rules stay `None` and are priced by
-their own prose instead. Half a bill that is provable beats a whole one that is not.
-
-**Why `bites:` is a field and not a prompt.** "Is this person non-compliant" is arithmetic, and
-arithmetic must not vary between runs. A qualifying-salary floor bites people paid *below* it;
-a contribution ceiling bites people paid *above the old one*; a rate change bites the whole
-age band; a growth threshold bites on forecast. We tried leaving that taxonomy to the model
-and it dropped a different finding every run — six, then five, then three. So each rule now
-*states* which side is wrong (`bites: below | above | band | forecast | always`) and Python
-does the comparison. The model explains, prices and prioritises; it never decides membership.
-Same split the curator uses.
-
-Run it standalone: `python vault.py` validates the vault, self-tests all four tools
-(including the refusals), then prints what lands within 500 days.
-
-### 3. `ante/model.py` — one Bedrock client
-
-Claude Haiku 4.5 via `langchain-aws`, `temperature=0` (regulatory work, not creative writing).
-
-Two facts about the hackathon AWS account are baked in here:
-
-- SSO tokens die every ~12h, so **credential failure is a normal operating state**, not an
-  exception. It gets its own type (`CredentialsExpired`) so the curator can checkpoint and
-  resume instead of crashing.
-- The org's service control policy denies `global.` inference profiles everywhere, and
-  ap-southeast-1 offers *only* `global.` for this model. So despite Singapore being the obvious
-  home for Singapore compliance data, the only combination that actually invokes is
-  **us-east-1 + `us.`**. Candidates are *probed* rather than assumed, so the day the policy is
-  relaxed Ante moves to Singapore with no code change.
-
-`python -m ante.model` checks credentials and pings the model.
-
-### 4. `ante/schema.py` — the contracts
-
-Two Pydantic models, deliberately strict, because validation failures here *are* a published
-metric:
-
-- **`Alert`** — what the advisor produces. `resource` is required and regex-checked to be a
-  primary `.gov.sg` URL, so **an uncited alert physically cannot validate**. That's answer
-  fidelity enforced structurally, not by prompt.
-- **`Verdict`** — what the curator's model returns. Every field is a *claim*, re-checked
-  against the fetched page before anything is written.
-
-### 5. `ante/advisor.py` — the question-answering graph
-
-A LangGraph ReAct loop over six tools. Four non-obvious decisions:
-
-1. **The company's figures and the rule index are pre-injected** into the system prompt, not
-   discovered. Every question needs both, neither changes mid-run, and the turn budget is ~6
-   model calls — spending two of them fetching what we already know is how a run runs out of
-   road before it reaches the roster.
-2. **Only the profile's frontmatter goes in, not its body.** The body is the vault author's
-   commentary and it names which staff trigger which rule. Injecting it would let the model
-   *recite* the answer instead of deriving it.
-3. **The checkpointer is keyed on the company's UEN** (sqlite, `state.db`). Follow-ups land
-   with the previous answer in scope, and a run that trips the recursion limit can still be
-   read back out of sqlite rather than vanishing.
-4. **The prose and the structured alerts come from the same run**, via LangGraph's
-   `response_format` — not from re-reading the answer afterwards. An earlier version parsed
-   the prose back into JSON and kept losing findings the prose had grouped, demoted or moved
-   into a "worth planning for later" list; the extractor faithfully copied a summary table
-   with fewer rows than the discussion above it. The structured pass now runs *inside* the
-   graph, where it can see the tool results instead of a lossy summary.
-
-`exposure()` is called first and decides who is affected, so the model's remaining job is to
-explain and cost the findings, not to work out which ones exist. It is handed a literal
-`rule_path -> resource` table to **copy** URLs from rather than recall them — which is why
-alerts validate instead of failing on a hallucinated link.
-
-```python
-out = ask("what changes for us in the next 90 days?")
-out["answer"]   # prose for the founder
-out["alerts"]   # list[Alert], validated
-out["metrics"]  # the six numbers
-```
-
-### 6. `ante/detect.py` + `ante/apply.py` + `ante/curator.py` — the daily sweep
-
-Three tiers, cheapest first, because **a daily sweep that costs tokens on a no-change day is a
-daily sweep that gets switched off**.
-
-**Tier 1 — `detect`. Pure Python. Zero tokens.** Every rule, every day. Fetches the source page
-and hashes *only the region around that rule's own keywords* — a whole-page hash fires on
-cookie banners and rotating footers and would wake the model for nothing. On a quiet day the
-run stops here and **the model is never even constructed**.
-
-**Tier 2 — `understand`. Bedrock, only for rules whose page actually moved.** The model is given
-**no tools at all**. It can't fetch, write, or act — it returns a `Verdict` describing what it
-read, and it's told in caps that `quote` must be copied character-for-character out of the new
-page because a literal string comparison is coming.
-
-**Tier 3 — `verify` → `apply`. Pure Python. Five gates, all must pass.**
-
-1. verdict is actually an applicable change (`figure_changed` / `date_changed`)
-2. confidence is `high` — a hedge is refused
-3. the quote appears **verbatim** on the page we fetched (≥20 chars)
-4. the new figure appears **inside the quote it was supposedly read from**
-5. it isn't a no-op, and the rule isn't "flapping" (changed >2 times in 30 days → frozen for a
-   human, because a rule that keeps moving means *our extraction* is wrong, not the law)
-
-Gates 3 and 4 are the guarantee the whole pitch rests on: **Ante cannot write a figure that is
-not literally printed on a `.gov.sg` page**, and that's enforced by string comparison, not by
-asking the model nicely. `python run.py negative` proves it — it feeds the gates a
-fabricated "$9,900" quote against the real live page and asserts the rule file comes back
-byte-identical.
-
-**`python -m ante.replay` proves the same thing without a network.** The live negative test
-is the right one to run on stage and the wrong one to depend on: it needs outbound HTTPS to
-`mom.gov.sg`, so it cannot run behind a locked-down egress policy, in CI, on a plane, or on
-conference wifi. A proof you can only perform when the network agrees with you is not a
-regression test. Replay stubs exactly two things — `detect.fetch` and the model call — and
-runs everything between them for real: the region hashing, the snapshots, the LangGraph
-sweep, the five gates, the writer, and `--rollback`. Six scenarios, each asserting on the
-rule file's bytes: baseline · unchanged (0 tokens, `verified:` untouched) · a fabricated
-quote · a real quote carrying an invented number · the honest change · an unreadable page.
-
-**A quiet day still runs `apply`.** It costs nothing and it is where two things that must
-happen daily live: `checked:` advancing on the rules we really did read, and an alert for a
-page that came back unverifiable or errored. Routing a no-change day straight to `log` —
-as an earlier version did — meant a sweep where every government page was unreachable or
-JS-rendered printed *"0 changed, 0 alerts"* and read as a clean day, while the freshness
-badge quietly went stale. A tool built to notice silence cannot be silent about its own.
-
-Anything that fails a gate isn't dropped, it's **escalated**: an alert lands in `alerts/` for a
-human, and the stale snapshot is deliberately kept so tomorrow's sweep raises it again until
-someone clears it. Applied changes back up the old file into `vault/.history/` first, so
-`--rollback <slug>` always works. Frontmatter is edited line-by-line rather than re-dumped
-through YAML, so human comments and key order survive.
-
-**Why LangGraph and not a for-loop:** `detect` never needs AWS and always succeeds, but this
-account's SSO dies every ~12h, so `understand` failing mid-run is routine. The sqlite
-checkpoint on `sweep-<date>` means the next authenticated run **resumes at `understand` with
-the already-fetched pages still in state**, instead of re-crawling six government sites.
-
-### 7. `ante/metrics.py` — the six published numbers
-
-One counter object per run, printed at the end of everything. Retrofitting measurement the
-night before submission is how teams lose the technical mark.
-
-Schema Validation Pass Rate · Tool-Call Success Rate · Task Completion Rate · Token Cost Per
-Run · Loop Discipline (turns used / limit) · Answer Fidelity (claims carrying a `.gov.sg` cite).
-
-This is also why **every tool returns `{"error": ...}` instead of raising**. An exception inside
-a `ToolNode` kills the run; a returned error lets the model read what went wrong and try
-something else. That difference is most of the Tool-Call Success Rate.
-
----
-
-## Running it
-
-```bash
-pip install -r requirements.txt          # python 3.13
-# AWS SSO creds go in env/.env  (gitignored)
-
-python vault.py                          # validate vault + self-test tools. No AWS needed.
-python -m ante.apply                     # gate self-check. No AWS needed.
-python -m ante.model                     # is Bedrock reachable?
-python run.py ask "..."                   # ask the demo question, print alerts + metrics
-python run.py sweep --dry-run         # full sweep, writes nothing
-python run.py sweep                    # live sweep
-python run.py sweep --only s-pass-qualifying-salary-2027
-python run.py rollback s-pass-qualifying-salary-2027
-python run.py negative        # proof it cannot invent a figure
-
-python -m ante.notify                    # brief self-check, writes to the outbox, sends nothing
-python -m ante.ingest                    # onboarding self-check, builds a throwaway vault
-python -m ante.api                       # every free route, in-process. No AWS, no network.
-python -m ante.replay                    # the WHOLE curator on canned pages. No AWS, no network.
-python run.py brief                      # sweep, then email the founder IF something moved
-python run.py brief --force              # send regardless (the demo)
-python run.py serve                      # the board at 127.0.0.1:8000, plus /docs
-```
-
-Every module runs standalone and self-checks. Nothing needs a UI to demo.
-
-### One thing to know before you touch the code
-
-`ante/detect.py` owns **all** the figure-matching heuristics — the number forms a government
-page might print, the keyword anchoring, the region hashing. There used to be a second copy in
-a root-level `freshness.py`; it was deleted rather than kept in sync, because two copies of a
-matching heuristic drift and the wrong one is the one that stays quiet. The no-AWS source table
-it gave you is now `python run.py sweep --dry-run`.
-
----
-
-## The two ends: an email out, an upload in
-
-Everything above is a closed loop — the vault knows, and nobody is told. These two files
-open it at both ends.
-
-### 8. `ante/notify.py` — how the founder actually hears about it
-
-`python run.py brief` sweeps the law, reads the roster, and emails the founder **only if
-something is new**. stdlib `smtplib`, no email dependency.
-
-Three decisions worth knowing:
-
-- **The email body is the terminal output.** `advisor.render()` builds the string,
-  `advisor.show()` prints it, `notify.brief()` mails it. One layout, two destinations — a
-  finding cannot reach the screen without also reaching the inbox.
-- **The fingerprint is over the findings, never the body.** The advisor's prose contains
-  today's date and is regenerated every run, so hashing the text would mail an identical
-  brief every morning, which is how a compliance alert becomes a filter rule. The hash
-  covers `(rule, who, urgency bucket, dollar impact)`. The bucket is in there so a deadline
-  standing still while today moves past it still counts as news.
-- **No SMTP configured, or SMTP throws → the brief is written to
-  `vault/alerts/outbox/`.** Conference wifi does not get to eat the demo.
-
-It also degrades rather than failing: this account's SSO tokens die every ~12h, and
-`vault.exposure()` needs no AWS at all, so an expired token downgrades the morning email to
-figures-only instead of silence. Every number in it still came off a government page; only
-the commentary is missing.
-
-```
-FOUNDER_EMAIL=you@example.com     # env/.env, overrides founder_email in the vault
-SMTP_HOST=smtp.gmail.com          # blank -> outbox
-SMTP_USER=you@example.com
-SMTP_PASS=<16-char app password>  # Gmail: needs 2FA on. NOT your account password.
-```
-
-Daily, unattended:
-
-```
-schtasks /Create /TN "Ante daily brief" /SC DAILY /ST 07:00 ^
-  /TR "<repo>\.venv\Scripts\python.exe <repo>\run.py brief"
-```
-
-### 9. `ante/ingest.py` — onboarding, without writing YAML twelve times
-
-A payroll CSV plus four answers becomes a valid vault. Column mapping is a **deterministic
-alias table, never a model** — same split the rest of the codebase rests on, because "which
-column is the salary" is structural, not a judgement call. When a required column cannot be
-identified it returns `needs_mapping` with the CSV's headers, so the UI offers a dropdown
-instead of the code guessing.
-
-The load-bearing detail is age banding: **five-year bands, not decades.** Decade bands put
-a 57-year-old in `50-59`, `vault._band()` reads the lower bound as 50, and the
-`employees_over_55` CPF rule silently stops matching them. A dropped finding is the one
-failure this product cannot have.
-
-Two things it refuses to guess, because both move money: an unrecognised pass type (wrong
-class moves somebody in or out of a salary floor) and an unreadable financial year end
-(wrong FYE moves the ACRA deadline by months). Both are reported against the row.
-
-### 10. `ante/api.py` — the local server the UI talks to
-
-Bound to `127.0.0.1`. The founder's payroll is parsed, written and queried **without
-leaving the laptop**; the only thing crossing the wire is the text of a government page,
-sent to Bedrock to ask whether a figure moved.
-
-> **Your payroll never leaves your laptop. The only thing Ante uploads is the law.**
-
-| Endpoint | Does | Cost |
-|---|---|---|
-| `GET /api/health` | vault valid? Bedrock alive? last sweep, overdue human reviews | free |
-| `GET /api/findings` | `vault.exposure()` — the hero screen's data | **free, no AWS** |
-| `GET /api/rules` | the rule base + `# Cost` / `# Next step` prose + freshness | **free, no AWS** |
-| `GET /api/alerts` | what was raised, and what Ante **refused** to write | **free, no AWS** |
-| `GET /api/history/{slug}` | every auto-applied change to one rule, for the diff | **free, no AWS** |
-| `POST /api/rollback/{slug}` | the human's veto, one click | free |
-| `POST /api/upload` | payroll CSV + four answers → a validated vault | free |
-| `POST /api/ask` | the advisor, for the chat sidebar | ~17k in / 2k out |
-| `POST /api/brief` | sweep + advise + email | ~17k in / 2k out |
-| `GET /docs` | FastAPI's interactive explorer | free |
-
-Everything the board needs is in the free half, so it renders before the advisor has
-finished thinking — and still renders when the SSO token has expired. `/api/ask` answers
-**503**, not 500, when credentials are dead: the board is still correct, and the UI says
-"commentary unavailable" rather than "Ante is down".
-
-`{slug}` is matched against the rule base rather than sanitised. It reaches `ante.apply`,
-which joins it onto a filesystem path, and an allowlist cannot be talked past the way a
-filter can.
-
-`python -m ante.api` self-checks every free route in-process, including the refusals.
-
-**One process serves one vault.** `vault.VAULT` resolves at import from `ANTE_VAULT`, so
-switching founders means restarting the server. That is correct for a local single-founder
-tool, and it is what protects the shipped demo vault: an upload refuses a vault that
-already has a roster.
-
-```bash
-ANTE_VAULT=./vaults/acme python run.py serve
-```
-
-`vaults/` is gitignored, so a real payroll cannot reach a commit.
-
----
-
-### 11. `web/index.html` — the Runway Board
-
-```bash
-python run.py serve      # then open http://127.0.0.1:8000/
-```
-
-One file. No build step, no npm, no framework, no CDN — three ways of saying the same
-thing: it is served off `127.0.0.1`, it has to render with the network unplugged, and a
-demo that needs `npm install` to start is a demo that does not start. Dropping it in
-`web/` also means it is served from the same origin as the API, so CORS never enters the
-room.
-
-It boots on the four **free** endpoints in parallel and paints before asking anything of
-AWS. `/api/health` is fetched *after* the first paint, because it makes an STS call that
-is slow exactly when credentials are dead — the board must not wait on the one thing
-that might be broken.
-
-What is on it:
+## Table of contents
 
 | | |
 |---|---|
-| **Three columns** | Law moved · You grew · Date arriving, straight off each rule's `clock`. Founders don't want a compliance list, they want the bill |
-| **The bill** | biggest text on the page — see "what the number is" below |
-| **18-month strip** | today as a red line, everything left of it on red ground, because *already in force and unbudgeted* is the expensive category a calendar structurally cannot show. Rules landing on the same day are grouped (`+117d ×3`) rather than drawn on top of each other — three clocks converge on 1 Jan 2027 and the strip should show that |
-| **The human's prose** | expand a card and the `# Cost` and `# Next step` sections appear *as written*, escaped and quoted, never paraphrased |
-| **Refusals tray** | fed from `alerts/` where `status: needs_human_check`. Most demos hide failure; a bot that declines to write an unverified figure is more convincing than one that is never wrong |
-| **Chat sidebar** | `POST /api/ask`, with Loop Discipline printed under the answer — the metric as a visible trust signal. The advisor is the drill-down, never the front door |
-| **Freshness** | human vs machine, side by side, amber past 90 days. It turns the `verified` / `checked` / `confirmed` distinction from an internal nicety into a feature |
-| **Copy to your accountant** | the whole finding as pasteable text with its source — founders forward, they don't share dashboards |
-| **Empty state** | "Nothing bites" plus the last sweep line, because a quiet day should read as proof of work rather than absence |
+| [1. The problem](#1-the-problem) | Who is stuck, and why it costs money |
+| [2. What Ante does](#2-what-ante-does) | The solution in one page |
+| [3. Why this needs agentic AI](#3-why-this-needs-agentic-ai) | The question a judge should ask |
+| [4. Quickstart](#4-quickstart) | Running it in three minutes |
+| [5. Using it through the website](#5-using-it-through-the-website) | The demo path, click by click |
+| [6. Architecture](#6-architecture) | One vault, two loops, three clocks, four tiers |
+| [7. Every file, and what it is for](#7-every-file-and-what-it-is-for) | The code map |
+| [8. The guarantee](#8-the-guarantee-ante-cannot-invent-a-figure) | Five gates, and the negative test |
+| [9. Metrics](#9-metrics) | The six published numbers, measured |
+| [10. Testing and evaluation](#10-testing-and-evaluation) | Six self-checks, no network needed |
+| [11. Design](#11-design) | Why it looks like a newspaper |
+| [12. Benefits](#12-benefits) | What it is worth |
+| [13. What Ante deliberately cannot do](#13-what-ante-deliberately-cannot-do) | The honest limits |
+| [14. Roadmap](#14-roadmap) | Where it goes next |
 
-**What the big number is, exactly.** `S$4,800/yr` is the *provable* half: the annualised
-distance between a salary and the floor it must clear, for the two rules where that is
-arithmetic over two figures the vault already holds. `vault._gap()` computes it and
-`vault.py`'s self-check asserts it **against the human-written `# Cost` prose** — both
-notes read "S$2,400 a year", and Python has to agree to the dollar.
+---
 
-The other four findings deliberately have no number on the card. An employer CPF rate and
-a late-filing penalty tier are not in the vault's frontmatter, so deriving them here would
-be inventing a figure — the one thing this codebase does not do. Those cards say *"priced
-in this rule's cost note"* and show the note. The header says how many, so the total is
-never mistaken for the whole bill.
+## 1. The problem
 
-**The prose is quoted, not rendered.** Everything is escaped first and only `**bold**` and
-pipe tables are promoted back — a rule note can never inject markup into the page quoting
-it. Blank lines separate paragraphs; single newlines are the author's 90-column git-diff
-wrapping and get reflowed, so cards do not show ragged mid-sentence breaks.
+> **A founder of a 10-to-50 person Singapore startup with no HR or finance hire needs a way
+> to find out that a threshold has moved *before* it costs them, because the obligations that
+> hurt most are the ones that changed quietly while they were busy building.**
 
-### What is still only an idea
+Three separate clocks can make a compliant company non-compliant overnight, and **none of
+them sends you a letter**:
 
-Ranked by demo impact per hour of work:
+| Clock | What moves | Example, live in the demo vault |
+|---|---|---|
+| **The law moved** | A government figure changes | CPF Ordinary Wage ceiling rose S$7,400 → S$8,000 on 1 Jan 2026 |
+| **You grew** | You crossed a threshold | Revenue passes S$1m and GST registration becomes compulsory |
+| **A date arrived** | A recurring deadline lands | ACRA annual return, due 7 months after financial year end |
 
-- **The visible diff.** `GET /api/history/{slug}` and `POST /api/rollback/{slug}` are live
-  and self-checked; what is missing is the panel that draws "CPF ceiling **S$7,400 →
-  S$8,000**" with the old and new page regions side by side, the matched quote highlighted,
-  which of the five gates passed, and a one-click **Undo** on it. The endpoints return
-  everything it needs. Watching a machine change a regulation and then watching a human veto
-  it in one click *is* the pitch, and it is still the best thirty seconds in the demo.
-- **The upload form.** `ante/ingest.py` and `POST /api/upload` are done, so onboarding
-  works from the CLI; the form itself and the dropdown that resolves a `needs_mapping`
-  response are not built. Nobody fills in twelve staff notes by hand — four questions plus
-  a payroll CSV should reach the first real alert in under two minutes.
-- **Counterparties.** `_SCHEMA.md` defines the type and `vault.py` makes the folder
-  agent-writable, but nothing writes to it yet. Watching an ACRA status flip to `Struck Off`
-  the week it happens is a whole feature, not a polish pass.
+The expensive category is the first one, and specifically **obligations already in force**.
+A calendar app structurally cannot warn you about these: the date is in the *past*. In the
+demo vault, one employee has been over the CPF ceiling for **248 days** — a cost incurred
+every month since January that nobody has noticed.
 
-### Skip these for now
-Push notifications, multi-tenant login, a settings page. None of them are the demo. (Dark
-mode came free with `prefers-color-scheme` and is not worth a line of anyone's time.)
+**Evidence.** Every rule in the vault is transcribed from a primary `.gov.sg` page, cited
+in the note, and re-checked daily — see [`vault/rules/`](vault/rules). The regulatory facts
+are verifiable today.
+
+> **Evidence still owed** — *following the hackathon's own bracket convention.* The claim
+> that founders *routinely miss* these changes is currently reasoned from the structure of
+> the rules, not measured. Before the finals this needs: **[N founder interviews, dated]**
+> and **[a source for the share of startups that missed a threshold change]**. It is marked
+> here rather than quietly asserted.
+
+**This statement survives a different solution.** It names a person, a moment and a cost,
+and it would still be true if someone built a spreadsheet, a Slack bot, or nothing at all.
+
+---
+
+## 2. What Ante does
+
+A founder uploads a payroll CSV and answers four questions. Ante builds an **Obsidian-readable
+markdown vault on their own laptop**, joins their roster against a curated Singapore rule base,
+and shows exactly who is on the wrong side of what — with the dollar figure, the date, and a
+one-click path to the government page it came from.
+
+Then it keeps watching. Every morning it re-reads the source pages. When a figure moves, it
+rewrites the rule **by itself** — but only after proving in Python that the new number is
+literally printed on the page. When it cannot prove that, it refuses, and escalates to a human.
+
+Three properties that are the whole point:
+
+1. **Every figure is traceable.** Not "the AI says S$3,600" — the sentence from `mom.gov.sg`,
+   the date a person last read it, and the date the machine last confirmed it, all on screen.
+2. **Your payroll never leaves your laptop.** The server binds `127.0.0.1`. The only thing
+   that crosses the wire is the text of a government page. Employee data is never sent to a model.
+3. **It is honest about what it cannot price.** Two of the six demo findings compute their cost
+   from your own payroll. The other four are priced in human-written prose, quoted verbatim,
+   because an employer CPF rate is not in the vault and Ante will not invent one.
+
+---
+
+## 3. Why this needs agentic AI
+
+> *"Would this problem still exist if agentic AI had never been invented?"* — Yes. Which is why
+> §1 names no technology. Here is why an agent earns its place in the **solution**.
+
+**A fixed workflow cannot do this**, because the input is the open web and the failure mode is
+silence:
+
+| What a cron script would do | What the agent does |
+|---|---|
+| Diff the whole page → fires on cookie banners, footers, reflowed sentences | Hashes only the ±2000 characters around **this rule's own keywords** |
+| Regex the new number → breaks the first time MOM writes "3,600" instead of "$3600" | A model *reads* the changed region and reports what moved, in natural language |
+| Write whatever it extracted | The model gets **no write tool**. It returns a `Verdict`; Python decides |
+| Crash when the page is JS-rendered | Returns `unverifiable`, raises an alert, and keeps the stale snapshot so tomorrow tries again |
+
+**Planning, acting, adapting** — the three the rubric asks us to name:
+
+- **Plans** — the advisor decides which rules to read and which roster rows to scan, then
+  batches its tool calls; the curator fans out over every rule in parallel with `Send`.
+- **Acts** — it writes to the rule base unattended, raises alerts, and emails the founder.
+- **Adapts** — a changed page routes to Bedrock; an unchanged one never constructs the model
+  at all. Credentials expiring mid-run checkpoints and resumes where it stopped.
+
+**And the LLM is deliberately kept out of two decisions**, because both are arithmetic and must
+never vary between runs:
+
+- *Who is non-compliant* — each rule declares `bites: below|above|band|forecast|always`, and
+  Python does the comparison ([`vault.exposure()`](vault.py)).
+- *Which CSV column is the salary* — a deterministic alias table, not a model call.
+
+The model explains, prices and prioritises. **Python decides membership and Python does the
+writing.** That split is the architecture.
+
+---
+
+## 4. Quickstart
+
+```bash
+python -m venv .venv && .venv\Scripts\activate     # Windows
+pip install -r requirements.txt                     # Python 3.13
+```
+
+**Secrets** go in `env/.env` (gitignored, never committed):
+
+```bash
+# AWS — needed only for the two model calls. Everything else runs without it.
+AWS_ACCESS_KEY_ID=...
+AWS_SECRET_ACCESS_KEY=...
+AWS_SESSION_TOKEN=...
+
+# Where the daily brief is emailed. Leave SMTP_HOST blank to write to an outbox file instead.
+FOUNDER_EMAIL=you@example.com
+SMTP_HOST=smtp.gmail.com
+SMTP_USER=you@example.com
+SMTP_PASS=<16-char Google App Password>
+```
+
+**Run it.** Nothing here needs a UI, and only the last two need AWS:
+
+```bash
+python vault.py                  # validate the vault + self-test the tools
+python -m ante.replay            # the ENTIRE curator, five gates and rollback, no network
+python -m ante.api               # every free endpoint, in-process
+python run.py serve              # the website  ->  http://127.0.0.1:8000
+
+python run.py sweep --dry-run    # the daily sweep, decides but writes nothing
+python run.py ask "what changes for us in the next 90 days?"
+python run.py brief --force      # sweep + advise + email the founder
+```
+
+**Every module self-checks.** `python -m <module>` runs its own assertions and prints what it
+proved. Start with `python -m ante.replay` — it exercises the whole agentic pipeline with no
+network and no AWS credentials, so it works on conference wifi and in CI.
+
+---
+
+## 5. Using it through the website
+
+```bash
+ANTE_VAULT=./vaults/my-company python run.py serve
+```
+
+Open **http://127.0.0.1:8000**. `ANTE_VAULT` picks which vault this server serves; leaving it
+unset serves the bundled Harborlight demo.
+
+**Step 1 — Start a vault.** Scroll to *Start a vault*. Drop a payroll CSV, fill in five fields
+(company name, UEN, financial year end, revenue run-rate, your email), press **Build the vault**.
+
+Column names are matched by an alias table, so real exports work as-is. This CSV is a live test
+case from the repo — note that no header matches the vault's field names:
+
+```csv
+Employee Name,Job Title,Residency Status,Gross Monthly Pay,Date of Birth,Work Pass Expiry
+Priya Menon,Founder & CEO,Singapore Citizen,"$9,100",1991-02-14,
+Marcus Teo,Head of Finance,SC,"6,450",1968-11-03,
+Arun Pillai,Data Engineer,S Pass,"3,450",1998-09-12,2028-03-15
+Hannah Brooks,Senior Backend Engineer,Employment Pass,"5,900",1990-08-19,2028-05-22
+```
+
+If a required column cannot be identified, Ante returns `needs_mapping` with your file's actual
+headers and shows a dropdown. **It does not guess** — a wrong salary column silently moves
+someone in or out of a legal floor.
+
+**Step 2 — Read the board.** The page rebuilds instantly and for free (`/api/findings` is pure
+Python, no AWS, no tokens):
+
+- the **headline** states the bill in a sentence
+- anything **already in force** gets the pink band and a `−248d` badge
+- the **eighteen-month timeline** puts today as a vertical line; everything left of it is
+  unbudgeted and already costing money
+- each finding expands to show *who it hits from your own roster*, the human-written **cost**
+  and **next step** quoted verbatim, and a **provenance chain** — printed on gov.sg → read by
+  a person on *date* → machine re-read *n* days ago
+
+**Step 3 — Trigger the workflow.** Two ways:
+
+```bash
+python run.py sweep      # the curator: re-read every source page, apply what it can prove
+python run.py brief      # sweep + advise + email, but only if something actually changed
+```
+
+On a quiet day the sweep costs **0 tokens** — detection is pure Python and the model is never
+constructed. The board's *What the curator changed this morning* section reports the quiet day
+as proof of work rather than hiding it.
+
+**Step 4 — Watch it refuse.** `python -m ante.replay` feeds the curator a fabricated quote and
+a real quote carrying an invented number. Both are rejected, the rule file stays byte-identical,
+and an alert appears in the board's **What Ante refused to do** tray.
+
+**Step 5 — Ask.** *Ask Ante* is the drill-down, not the front door — the board is already correct
+before any model runs. This is the only part that needs AWS; without credentials the page says
+*"commentary unavailable"* in grey and everything else keeps working.
+
+---
+
+## 6. Architecture
+
+```mermaid
+flowchart TB
+    subgraph browser["web/index.html — 127.0.0.1 only"]
+        UI["The Runway Board<br/>upload · findings · refusals · ask"]
+    end
+    subgraph api["ante/api.py — FastAPI"]
+        EP["/api/findings · /api/rules · /api/alerts<br/>/api/upload · /api/ask · /api/brief"]
+    end
+    subgraph vault["vault/ — Obsidian markdown, on the founder's laptop"]
+        V["rules/ · people/ · company/<br/>alerts/ · log.md · .history/"]
+    end
+    subgraph loops["Two LangGraph loops, one runtime"]
+        A["ADVISOR<br/>founder asks → cited answer"]
+        C["CURATOR<br/>nobody asks → is the law still true?"]
+    end
+    GOV[".gov.sg pages<br/>MOM · CPF · IRAS · ACRA"]
+    BR["AWS Bedrock<br/>Claude Haiku 4.5"]
+
+    UI --> EP --> V
+    EP --> A
+    EP --> C
+    A -- reads --> V
+    C -- maintains --> V
+    C -- "fetch, no AI" --> GOV
+    A -.->|"every question"| BR
+    C -.->|"only when a page moved"| BR
+    C -- "email" --> M["Founder's inbox"]
+```
+
+### One vault, two loops
+
+The vault is **the** source of truth: OKF-conformant markdown with YAML frontmatter, readable
+by an agent and auditable by a human in Obsidian. The **advisor** consumes it; the **curator**
+keeps it true. They share `tools.py`, one model client and one checkpointer.
+
+### Four tiers, cheapest first
+
+A daily sweep that costs money on a quiet day is a daily sweep that gets switched off.
+
+| Tier | What | AWS? | Cost |
+|---|---|---|---|
+| **1 · detect** | Region-anchored hash of each source page | no | **0 tokens**, every rule, every day |
+| **2 · understand** | Bedrock reads the changed region. **No tools bound** | yes | only for pages that actually moved |
+| **3 · verify** | Five deterministic gates re-check every claim | no | 0 |
+| **4 · apply** | Snapshot to `.history/`, rewrite, bump revision, alert | no | 0 |
+
+**Tier 1 in detail.** Hashing a whole page fires on cookie banners and rotating footers, so
+Ante slices ±2000 characters around *that rule's own title keywords* and hashes only that.
+
+### Why LangGraph, and not a `for` loop
+
+1. **Durable execution.** This account's SSO tokens die every ~12h, so credential failure is a
+   normal operating state. `detect` never needs AWS and always succeeds; `understand` does. A
+   `SqliteSaver` keyed on `sweep-<date>` resumes at `understand` on the next authenticated run
+   — six government pages already in state, nothing re-crawled.
+2. **`Send` fan-out.** `detect` maps over every rule in parallel and reduces into one state.
+3. **Conditional routing.** The zero-token quiet day is *an edge in the graph*, not an `if`
+   buried in a script.
+4. **`recursion_limit` is the Loop Discipline metric**, read straight off the runtime.
+
+---
+
+## 7. Every file, and what it is for
+
+### The knowledge
+
+| Path | Purpose |
+|---|---|
+| `vault/rules/*.md` | 6 curated Singapore rules. Every figure cited to a primary `.gov.sg` page. **Human-owned.** |
+| `vault/people/*.md` | The roster. Synthetic in the demo — the PDPA is in our own rule base. |
+| `vault/company/profile.md` | UEN, financial year end, headcount, revenue run-rate |
+| `vault/alerts/` | What the agent raised, and what it **refused** to do |
+| `vault/log.md` | Every run, including the quiet ones |
+| `vault/.snapshots/`, `.history/` | Last-seen page regions; pre-change copies for rollback |
+| `vault/_SCHEMA.md` | The frontmatter contract the validator enforces |
+
+### The code — 3,463 lines of Python
+
+| File | Lines | Purpose |
+|---|---|---|
+| `vault.py` | 570 | The store. Read/write the vault, the four tools, the offline validator, and `exposure()` — the deterministic join that decides who is non-compliant |
+| `ante/ingest.py` | 468 | Onboarding. A payroll CSV plus four answers become a validated vault. Deterministic column aliases, never a model |
+| `ante/curator.py` | 407 | **Graph 2.** The scheduled sweep: detect → understand → verify → apply → log |
+| `ante/api.py` | 390 | The local HTTP face. Ten endpoints, bound to `127.0.0.1` |
+| `ante/advisor.py` | 293 | **Graph 1.** The ReAct loop that answers a founder's question with citations |
+| `ante/detect.py` | 216 | Tier 1. Region-anchored change detection. No AWS, no tokens |
+| `ante/replay.py` | 201 | The whole curator proved against canned pages — no network, no AWS |
+| `ante/notify.py` | 195 | The email brief. stdlib `smtplib`, outbox fallback, sends only when something changed |
+| `ante/apply.py` | 193 | The **only** code that may write to `vault/rules/`. Carries the five gates |
+| `ante/tools.py` | 103 | The six tools both graphs share |
+| `run.py` | 101 | CLI: `ask`, `sweep`, `rollback`, `negative`, `brief`, `serve` |
+| `ante/model.py` | 99 | One Bedrock client. Region probing, credential checks, expiry as a typed error |
+| `demo_drift.py` | 88 | Stages the drift demo, and is the on-camera panic button |
+| `ante/schema.py` | 73 | Pydantic contracts: `Alert`, `Verdict`, `Findings` |
+| `ante/metrics.py` | 59 | The six published metrics, written by both graphs |
+| `web/index.html` | — | The Runway Board. No framework, no build step |
+
+---
+
+## 8. The guarantee: Ante cannot invent a figure
+
+This is the claim the whole product rests on, and it is enforced **structurally**, not by
+prompting.
+
+The Bedrock call in `understand` has **no tools bound**. Its only power is to describe what it
+read, as a `Verdict`. Python then decides. All five gates must pass before `rules/` is touched:
+
+| # | Gate | Blocks |
+|---|---|---|
+| 1 | `verdict ∈ {figure_changed, date_changed}` | Layout churn, unclear diffs |
+| 2 | `confidence == "high"` | The model's own hedging |
+| 3 | **The quote appears verbatim in the freshly fetched page** | A fabricated quote |
+| 4 | **The new figure appears inside that quote** | A real sentence with an invented number beside it |
+| 5 | New value ≠ current value | No-op rewrites |
+
+Gates 3 and 4 are the guarantee: the string is checked against the page bytes **before** the
+write. Any gate failing raises an alert and leaves the rule untouched — and deliberately keeps
+the stale snapshot, so tomorrow's sweep raises it again until a human clears it.
+
+**Reversibility.** Every apply snapshots the prior note to `vault/.history/<slug>/<ts>.md`.
+`python run.py rollback <slug>` restores it byte-for-byte.
+
+**Proof, on demand:**
+
+```bash
+python run.py negative     # against the live MOM page
+python -m ante.replay      # against canned pages: no network, no AWS
+```
+
+```
+REFUSED  s-pass-qualifying-salary-2027: quote does not appear verbatim on the fetched page
+REFUSED  s-pass-qualifying-salary-2027: new_value 9900.0 does not appear inside the quote
+APPLIED  s-pass-qualifying-salary-2027: 3600 -> 3800
+         "must earn at least $3,800 a month from 1 January 2028"
+```
+
+---
+
+## 9. Metrics
+
+The six the hackathon named, collected by `ante/metrics.py` and printed at the end of every run.
+
+| Metric | How Ante measures it | Measured |
+|---|---|---|
+| **Schema Validation Pass Rate** | Pydantic on `Alert` / `Verdict`, counted on the way out | 1/1 — enforced by `response_format`, so a malformed answer cannot leave the graph |
+| **Tool-Call Success Rate** | Tools return `{"error": …}` rather than raising | **6/6 (100%)** |
+| **Task Completion Rate** | Rules whose `checked:` advanced / findings answered | **6/6 (100%)** |
+| **Token Cost Per Run** | `usage_metadata` summed | Advisor 17,338 in / 1,914 out · **Curator 0 / 0 on a quiet day** |
+| **Loop Discipline** | Turns used against `recursion_limit` | **5 of 12** |
+| **Answer Fidelity** | Every alert carries a `.gov.sg` `resource`; every applied change carries its verbatim quote | **6/6 claims cited** |
+
+**Token Cost Per Run is the one to look at.** Detection is free, so the steady-state cost of
+running Ante is **zero** on any day the law did not move — which is most days. Cost is incurred
+only when there is something to say.
+
+---
+
+## 10. Testing and evaluation
+
+Six runnable self-checks. **Four need no network and no AWS**, so they work in CI, on a plane,
+and behind a locked-down egress policy.
+
+| Command | Proves | Needs |
+|---|---|---|
+| `python vault.py` | Vault validates; tools work; **`exposure()` picks exactly the right 6 parties and excludes the compliant ones** | — |
+| `python -m ante.replay` | Baseline, unchanged, honest apply, **fabricated refused**, misattributed refused, rollback | — |
+| `python -m ante.apply` | All five gates, individually | — |
+| `python -m ante.ingest` | Messy CSV → valid vault; a 57-year-old lands in `55-59`; unmappable columns reported, not guessed | — |
+| `python -m ante.api` | Every free endpoint; unknown slugs 404; traversal unroutable; no-credentials degrades to 503 | — |
+| `python -m ante.notify` | The brief renders every finding and falls back to the outbox | — |
+| `python run.py negative` | The fabrication refusal, against the **live** MOM page | network |
+
+**The negative control matters most.** `vault.py` does not merely assert that six findings
+appear — it asserts that **Staff 10 does not**, because that EP holder is already above the
+coming floor, and that **Staff 03 does not**, because they are under the old CPF ceiling. A
+join that is too eager fails the test as loudly as one that is too lazy.
+
+**Ingest is tested against headers the vault has never seen** — `Gross Monthly Pay`,
+`Residency Status`, `Date of Birth` — and against an annual salary column that must be divided
+by twelve before any comparison is valid.
+
+---
+
+## 11. Design
+
+The interface is a **broadsheet, not a dashboard**: Source Serif 4 over IBM Plex Mono on a warm
+off-white ground, hierarchy carried by type rather than by boxes and colour fills.
+
+Four decisions worth defending:
+
+1. **Colour is a scalpel.** `#aa0b56` means *already in force, unbudgeted* and appears nowhere
+   else on the page. When it appears, it means one thing.
+2. **The headline number is honest.** Only two of six findings compute a cost from payroll.
+   Writing "S$4,800 total exposure" would understate the bill by omission — the exact failure
+   this product exists to prevent — so the page states the provable figure *and* says four more
+   are priced in prose.
+3. **The three freshness clocks are never merged.** `verified` is a person's claim; `checked`
+   and `confirmed` are the machine's. Collapsing them into one "last updated" would let a daily
+   bot sweep pass for a human having actually read the law.
+4. **Refusals are a section, not a log line.** A bot that declines to write an unverified figure
+   is a better trust signal than one that claims it is never wrong.
+
+`web/index.html` is a single file: no framework, no build step, no bundler. Design source lives
+in `Ante_ regulatory early-warning tool/Ante.dc.html`; the brief that produced it is
+`web/DESIGN_PROMPT.md`.
+
+---
+
+## 12. Benefits
+
+| Benefit | Measured on the demo vault |
+|---|---|
+| **Finds money already leaking** | One employee over the CPF ceiling for **248 days** — a cost incurred every month, which no calendar app can surface because the date is in the past |
+| **Quantifies what is provable** | **S$4,800/year** computed from payroll arithmetic; four more findings priced in quoted human prose |
+| **Prevents an unrecoverable failure** | An S Pass holder S$200/month under the 2027 floor. A failed renewal **has no remedy** — the worker cannot continue |
+| **Costs nothing to run** | **0 tokens** on any day the law did not move |
+| **Onboards in under two minutes** | Payroll CSV + four answers → validated vault + 6 findings, verified end-to-end |
+| **Keeps payroll private** | Employee data never reaches a model or leaves `127.0.0.1` |
+| **Scales without re-engineering** | One `ANTE_VAULT` per company; the rule base ships pre-curated and is shared |
+
+---
+
+## 13. What Ante deliberately cannot do
+
+Judges should hear this from us rather than find it.
+
+- **It cannot discover a law that is not already in the vault.** Curation is human. Ante watches
+  pages it has been told to watch. A brand-new obligation on an unwatched page is invisible, and
+  worse, a new obligation appearing *on a watched page* would currently be judged `unchanged`.
+  Fixing that is a `new_obligation` verdict — roughly 15 lines, and the top of the roadmap.
+- **It does not give legal advice.** `# Next step` is human-written prose. The agent quotes it.
+- **It cannot read JavaScript-rendered pages.** The CPF ceiling page is one; Ante returns
+  `unverifiable`, raises an alert, and asks a human — it does not guess.
+- **One server serves one vault.** `vault.VAULT` resolves at import, so switching companies means
+  restarting. Correct for a local single-founder tool; a config change to lift.
+- **Singapore-region inference was not available.** The org policy denies the `global.` inference
+  profile and `ap-southeast-1` offers only that profile for this model, so Bedrock runs in
+  `us-east-1`. `ante/model.py` probes candidates in order and moves to Singapore automatically
+  if the policy is relaxed. We are not claiming in-region processing that we do not have.
+
+---
+
+## 14. Roadmap
+
+1. **`new_obligation` verdict** — close the gap above, so a new rule appearing on a watched page
+   escalates instead of being re-baselined.
+2. **`redact: true`** — send `Staff 04 · S Pass · Engineering` instead of a name in the email, so
+   the privacy guarantee extends to the notice itself.
+3. **Rule-base coverage** — 6 rules is a proof. IRAS corporate tax, SDL, work-injury insurance,
+   and the rest of the CPF schedule are the same shape and need no new code.
+4. **Multi-tenant** — `thread_id` is already the UEN and the vault path is already an env var.
+5. **Accountant hand-off** — one click emits a finding as pasteable text with sources. Founders
+   forward things; they do not share dashboards.
+
+---
+
+## Appendix: the demo company
+
+**Harborlight Analytics Pte Ltd** is invented. Twelve synthetic staff, chosen so a realistic set
+of obligations is genuinely approaching: one employee above the CPF ceiling, one in the 55–59
+band, an S Pass holder and an EP holder both under their 2027 floors, revenue at S$862k against
+the S$1m GST threshold, and an ACRA return due 31 July.
+
+**Every person record is synthetic, and that is a design constraint rather than a convenience:**
+real employee data in a demo would violate the PDPA — a law in Ante's own rule base.

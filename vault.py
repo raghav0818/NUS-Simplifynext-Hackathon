@@ -119,7 +119,16 @@ def _band(fm, on=None):
 
 
 def _company():
-    return _split(VAULT / "company" / "profile.md")[0]
+    """The company's frontmatter, or {} before one has been onboarded.
+
+    An empty vault is a real state, not an error: it is what the founder is
+    looking at the moment they open Ante for the first time, before the upload.
+    Raising here would take the whole board down at exactly that moment, so the
+    absence is reported by validate() instead, which is the thing whose job it
+    is to notice.
+    """
+    p = VAULT / "company" / "profile.md"
+    return _split(p)[0] if p.is_file() else {}
 
 
 def section(body: str, heading: str) -> str:
@@ -371,7 +380,13 @@ def _lands_on(fm):
     if fm.get("clock") == "law":
         return fm.get("effective")
     if fm.get("clock") == "recurring":
-        month, day = _fye()
+        try:
+            month, day = _fye()
+        except ValueError:
+            # no company yet, or an unreadable year end. The rule keeps its place
+            # on the board as an undated obligation rather than taking the board
+            # down with it; validate() is what reports the cause.
+            return None
         for year in range(TODAY.year - 1, TODAY.year + 3):
             due = _add_months(dt.date(year, month, day), int(fm["threshold_after"]))
             if due >= TODAY:
