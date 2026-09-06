@@ -20,11 +20,13 @@ routine, not exceptional. The SqliteSaver checkpoint on thread_id
 already-fetched pages still in state, instead of re-crawling six government
 sites.
 
-    python -m ante.curator --dry-run
-    python -m ante.curator
-    python -m ante.curator --only s-pass-qualifying-salary-2027
-    python -m ante.curator --rollback s-pass-qualifying-salary-2027
-    python -m ante.curator --negative      # proof it cannot invent a figure
+Driven from run.py:
+
+    python run.py sweep --dry-run
+    python run.py sweep
+    python run.py sweep --only s-pass-qualifying-salary-2027
+    python run.py rollback s-pass-qualifying-salary-2027
+    python run.py negative                 # proof it cannot invent a figure
 """
 from __future__ import annotations
 
@@ -40,7 +42,7 @@ from langgraph.types import Send
 
 from vault import VAULT, _notes, _rel, _split, vault_write
 from ante.apply import _norm, apply_rule_update, gates, rollback, touch
-from ante.detect import detect_one, save_snapshot
+from ante.detect import STALE_AFTER, detect_one, save_snapshot, stale
 from ante.metrics import Metrics
 from ante.model import CredentialsExpired, _is_expired, chat
 from ante.schema import Verdict
@@ -93,16 +95,6 @@ class State(TypedDict, total=False):
     alerts: list
 
 
-class RuleIn(TypedDict):
-    """Send payload for one detect branch."""
-    rule: str
-
-
-class ChangeIn(TypedDict):
-    """Send payload for one understand branch."""
-    found: dict
-
-
 # --------------------------------------------------------------------------
 # tier 1 -- detect. No AWS, no model, no tokens.
 # --------------------------------------------------------------------------
@@ -111,7 +103,7 @@ def fan_rules(state: State):
     return [Send("detect", {"rule": rel}) for rel in state["rules"]]
 
 
-def detect(payload: RuleIn) -> dict:
+def detect(payload: dict) -> dict:
     found = detect_one(VAULT / payload["rule"])
     M.tasks_attempted += 1
     # detect_one signals failure in `status`, not with an "error" key
@@ -121,6 +113,16 @@ def detect(payload: RuleIn) -> dict:
         for heavy in ("page_text", "old_region", "new_region"):
             found.pop(heavy, None)
     return {"detected": [found]}
+
+
+def gather(state: State) -> dict:
+    """Fan-in. A plain edge out of a Send-fanned node runs exactly ONCE, after
+    every branch has landed, which is the only place this routing decision is
+    safe to make. Hanging the conditional edge off `detect` itself evaluates it
+    once PER branch against half-filled state: the branches that resolve before
+    the changed rule arrives all vote "log", so a sweep where some rules moved
+    and some did not logs twice and reports the run before it has finished."""
+    return {}
 
 
 def after_detect(state: State):
@@ -169,10 +171,12 @@ def ask(fm: dict, found: dict) -> Verdict:
                    reasoning="model returned no valid Verdict in two attempts")
 
 
-def understand(payload: ChangeIn) -> dict:
+def understand(payload: dict) -> dict:
     found = payload["found"]
     fm, _ = _split(VAULT / found["path"])
-    return {"verdicts": [{**found, "verdict": ask(fm, found),
+    # a Pydantic object in checkpointed state is deprecated by langgraph and
+    # would break the resume-after-expiry path; dicts survive any serialiser
+    return {"verdicts": [{**found, "verdict": ask(fm, found).model_dump(mode="json"),
                           "title": fm.get("title")}]}
 
 
@@ -184,10 +188,11 @@ def verify(state: State) -> dict:
     out = []
     for v in state["verdicts"]:
         fm, _ = _split(VAULT / v["path"])
-        ok, reason = gates(fm, v["verdict"], v["page_text"])
-        if v["verdict"].verdict in CLAIMS:
+        verdict = Verdict(**v["verdict"])
+        ok, reason = gates(fm, verdict, v["page_text"])
+        if verdict.verdict in CLAIMS:
             M.claims += 1
-            M.claims_cited += int(_norm(v["verdict"].quote) in _norm(v["page_text"]))
+            M.claims_cited += int(_norm(verdict.quote) in _norm(v["page_text"]))
         out.append({**v, "ok": ok, "reason": reason})
     return {"checked": out}
 
@@ -219,7 +224,7 @@ def apply(state: State) -> dict:
     applied, refused, alerts = [], [], []
 
     for c in state.get("checked", []):
-        verdict, rel = c["verdict"], c["path"]
+        verdict, rel = Verdict(**c["verdict"]), c["path"]
 
         if verdict.verdict == "unchanged":
             print(f"  UNCHANGED  {c['slug']}: page edited, figure held "
@@ -288,6 +293,13 @@ def log(state: State) -> dict:
             f"{len(state.get('refused', []))} refused, "
             f"{len(state.get('alerts', []))} alerts, "
             f"{M.input_tokens} in / {M.output_tokens} out tokens")
+    # the one staleness no sweep can clear: a machine confirming a figure is not
+    # a person confirming the rule still means what the note says it means
+    overdue = stale()
+    if overdue:
+        line += f", {len(overdue)} overdue human re-read"
+        print(f"  OVERDUE    human re-read (>{STALE_AFTER}d): "
+              f"{', '.join(o['path'] for o in overdue)}")
     print(f"\n{line}")
     if not state["dry_run"]:
         text = LOG.read_text(encoding="utf-8").replace("_No runs yet._", "").rstrip()
@@ -302,11 +314,13 @@ def log(state: State) -> dict:
 
 def build() -> StateGraph:
     g = StateGraph(State)
-    for name, fn in (("detect", detect), ("understand", understand),
-                     ("verify", verify), ("apply", apply), ("log", log)):
+    for name, fn in (("detect", detect), ("gather", gather),
+                     ("understand", understand), ("verify", verify),
+                     ("apply", apply), ("log", log)):
         g.add_node(name, fn)
     g.add_conditional_edges(START, fan_rules, ["detect"])
-    g.add_conditional_edges("detect", after_detect, ["understand", "log"])
+    g.add_edge("detect", "gather")
+    g.add_conditional_edges("gather", after_detect, ["understand", "log"])
     g.add_edge("understand", "verify")
     g.add_edge("verify", "apply")
     g.add_edge("apply", "log")
@@ -382,19 +396,3 @@ def negative_test(slug: str = "s-pass-qualifying-salary-2027") -> bool:
     print(f"negative test ok  ->  fabricated $9,900 quote refused: {why}")
     print(f"                      {_rel(path)} byte-identical, nothing written")
     return True
-
-
-if __name__ == "__main__":
-    sys.stdout.reconfigure(encoding="utf-8")
-    argv = sys.argv[1:]
-
-    if "--rollback" in argv:
-        print(rollback(argv[argv.index("--rollback") + 1]))
-    elif "--negative" in argv:
-        negative_test()
-    else:
-        only = argv[argv.index("--only") + 1] if "--only" in argv else None
-        out = sweep(dry_run="--dry-run" in argv, only=only)
-        if "metrics" not in out:
-            sys.exit(out["error"])
-        print(f"\n{out['metrics'].report()}")

@@ -37,6 +37,7 @@ The knowledge base. One rule per file — the note IS the retrieval chunk.
 | `threshold_before` | number \| `null` | |
 | `threshold_after` | number | |
 | `unit` | `SGD_per_month` \| `SGD_per_year` \| `percent` \| `months` | |
+| `bites` | `below` \| `above` \| `band` \| `forecast` \| `always` | **which side of the threshold is the wrong side.** `below` = a qualifying-salary floor (paid under it). `above` = a ceiling (paid over `threshold_before`, the pay newly caught). `band` = a rate change, hits everyone `applies_to` selects. `forecast` = a growth threshold, bites within 20% of the line. `always` = a filing deadline. Read by `vault.exposure()`, which does the comparison in Python so it cannot drift between runs. |
 | `severity` | `high` \| `medium` \| `low` | |
 | `verified` | `YYYY-MM-DD` | date a human checked `resource` |
 | `source_render` | `js` (optional) | present when the source page is JavaScript-rendered, so no bot can confirm the figure |

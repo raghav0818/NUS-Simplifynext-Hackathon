@@ -8,6 +8,7 @@ financial_year_end: 12-31
 headcount: 12
 annual_revenue_run_rate: 862000
 sector: information_technology
+founder_email: founder@harborlight.example
 verified: 2026-09-04
 ---
 

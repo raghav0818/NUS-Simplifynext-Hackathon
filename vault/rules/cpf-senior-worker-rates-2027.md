@@ -11,8 +11,11 @@ trigger_field: age_band
 threshold_before: 16
 threshold_after: 16.5
 unit: percent
+bites: band  # a rate rise hits everyone in the age band
 severity: medium
 verified: 2026-09-04
+checked: 2026-09-06
+confirmed: 2026-09-06
 ---
 
 # What changes

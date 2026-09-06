@@ -60,3 +60,14 @@ class Verdict(BaseModel):
     quote: str = ""
     confidence: Literal["high", "medium", "low"]
     reasoning: str
+
+
+class Findings(BaseModel):
+    """The advisor's structured answer: every finding from one run.
+
+    Produced inside the graph by `response_format`, so the model writing it can
+    see the roster rows and rule frontmatter the run actually fetched, rather
+    than re-reading its own prose. A finding cannot be lost to formatting.
+    """
+
+    findings: list[Alert]

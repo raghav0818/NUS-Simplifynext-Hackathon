@@ -8,3 +8,9 @@ __pycache__/
 state.db
 vault/.snapshots/
 vault/.history/
+
+# Ante brief state and the fallback outbox -- may contain employee names
+vault/.brief.json
+vault/alerts/outbox/
+# a founder's own vault, built by ante/ingest.py from real payroll
+vaults/

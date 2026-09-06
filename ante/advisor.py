@@ -14,8 +14,10 @@ explaining, because none of them is the obvious one:
 3. The checkpointer is keyed on the company's UEN. Follow-up questions land with
    the previous answer already in scope, and a run that trips the recursion
    limit can still be read back out of sqlite rather than vanishing.
-4. Alerts are extracted by a second, separate call. One turn asked to both
-   explain a situation to a founder and emit strict JSON does neither well.
+4. The founder-facing prose and the structured alerts are produced by the SAME
+   run, via response_format, not by re-reading the prose afterwards. A second
+   pass over the answer text kept losing findings the prose had grouped or
+   demoted; the structured pass sees the tool results instead.
 
     python -m ante.advisor
 """
@@ -25,7 +27,6 @@ import datetime as dt
 import functools
 import json
 import pathlib
-import re
 import sqlite3
 import sys
 
@@ -33,12 +34,11 @@ from langchain_core.messages import AIMessage, HumanMessage, SystemMessage, Tool
 from langgraph.checkpoint.sqlite import SqliteSaver
 from langgraph.errors import GraphRecursionError
 from langgraph.prebuilt import create_react_agent
-from pydantic import ValidationError
 
 import vault
 from ante.metrics import Metrics
 from ante.model import chat, credentials_ok
-from ante.schema import GOV, Alert
+from ante.schema import GOV, Findings
 from ante.tools import TOOLS
 
 DB = pathlib.Path(__file__).resolve().parent.parent / "state.db"
@@ -51,42 +51,37 @@ Be concrete and short. A founder wants four things: who, how much, by when, and
 what to do about it.
 
 HOW TO WORK
-1. vault_search first, with words from the question. It returns candidates only.
-2. vault_read the rules that look relevant -- all of them in ONE turn, several
-   tool calls in the same message. Your turn budget is small; batching is how it
-   lasts. Never state a figure you have not read out of a rule note.
-3. roster_scan each rule's `applies_to` value, copied verbatim from that rule's
-   frontmatter. Batch these in one turn too.
-4. Then answer.
+1. exposure() FIRST, always, before anything else. It returns the complete list
+   of who is on the wrong side of which rule, with the arithmetic already done.
+   That list IS your set of findings: report every party in it, and no party
+   outside it.
+2. vault_read each rule exposure() returned, batched in ONE turn -- several tool
+   calls in the same message. You need each rule's "# Next step" wording and its
+   "# Cost" figures. You do NOT need to re-check who is affected; that is
+   settled. Never state a figure you have not read out of a rule note.
+3. Then answer.
 
-THE COMPARISON IS YOURS TO MAKE
-roster_scan returns everyone in a CATEGORY, not everyone the rule breaks. All
-twelve staff match `all_employees`; almost none of them have a problem. For each
-person it returns, compare that person's own number against the rule's threshold
-yourself, and report ONLY the ones on the wrong side of it. Someone who already
-complies is not a finding -- leave them out entirely, do not list them as
-reassurance.
-
-Which side is the wrong side depends on the rule, so read `# Who it hits`:
-- a qualifying-salary floor bites people paid BELOW it
-- a contribution ceiling bites people paid ABOVE the OLD ceiling
-  (`threshold_before`), because that is the pay newly caught by the rise
-- a `growth` threshold bites the company when its own figure is past the line or
-  within about 20% of it: the obligation starts when a crossing is reasonably
-  forecast, not when it happens
-- a `recurring` rule always bites. Add its `threshold_after` months to the
-  company's financial_year_end and give the next such date that has not passed.
-
-One finding per rule per affected party. Do not split one rule into several
-findings, and do not raise the same rule twice.
+roster_scan and vault_search are there for follow-up questions ("who else is
+near this?"). They are not part of answering this one, and roster_scan returns
+everyone in a CATEGORY rather than everyone a rule breaks -- exposure() is the
+one that has already told them apart.
 
 HORIZON
-"The next 90 days" means what has to be acted on now, not what has an effective
-date inside 90 days. Include anything already in force that has not been
-adjusted for, anything landing within the next 18 months -- payroll changes,
-pass renewals and tax registrations all need two quarters of lead time -- and
-any standing threshold the company is close to. Always say the date each one
-actually lands.
+"The next 90 days" means what must be ACTED ON now, not what has an effective
+date inside 90 days. Report every one of these:
+
+- Anything ALREADY IN FORCE. A date in the past is the strongest reason to raise
+  a rule, never a reason to drop it: the cost is being incurred right now and
+  grows every month it goes unadjusted. Nothing in the vault tells you whether
+  the company has already adjusted for it, so you may not assume it has, and
+  "already in force" is not a finding you get to write off as settled.
+- Anything landing within the next 18 months. Payroll changes, pass renewals and
+  tax registrations all need two quarters of lead time.
+- Any standing threshold the company is close to.
+
+Always say the date each one actually lands, and never drop a finding for
+landing late -- exposure() already decided membership, and timing is a column,
+not a filter.
 
 CITATIONS
 Every claim cites the `resource` URL of the rule note it came from. The
@@ -95,25 +90,38 @@ regulatory advice and never state a figure the vault does not contain.
 
 Do not call vault_write unless the founder asks you to record something.
 
-Finish with a numbered list, one line per finding, naming the person or the
-company, their number, the threshold, the date it lands, and the URL."""
+FINISH WITH THE COMPLETE LIST
+Work through the rule base one rule at a time -- every rule in the index, not
+the ones that feel urgent -- and for each, say who is on the wrong side of it.
+Then end with a table headed "Findings" carrying ONE ROW PER AFFECTED PARTY PER
+RULE, with their number, the threshold, the date it lands, and the URL. A party
+is a named person OR the company itself -- company obligations like registration
+thresholds and filing deadlines are findings exactly as staff ones are.
 
-EXTRACT = """Turn the findings in the answer below into JSON and nothing else.
+Membership in that table is decided by one question only: is someone on the
+wrong side of this rule? It is never decided by when the rule lands. A rule
+taking effect in 2027 or 2028 earns a row today if somebody is already short of
+it, because the salary review that fixes it happens now. Put the timing in the
+date column and let the founder judge urgency for themselves.
 
-Output a JSON array, one object per finding, with exactly these keys:
-  rule_path      the rule's vault path, taken from the table below
-  headline       one sentence naming who is affected and the number
-  who            list of names, e.g. ["Staff 04"] or ["Harborlight Analytics Pte Ltd"]
-  deadline       "YYYY-MM-DD", or null for a standing threshold
-  dollar_impact  annual SGD cost as a plain number, or null
-  next_step      one sentence, from that rule's "# Next step"
-  resource       copied character for character from the table below
+So: no second list of things that are "outside the window" or "worth planning
+for later" -- anything you would have put there is a row in the table instead.
+If you name someone as affected anywhere above, they have a row. The table is
+the deliverable, and a finding missing from it never reaches the founder."""
 
-rule_path -> resource
-{table}
+EXTRACT = """List the findings from this run as structured data.
 
-No markdown, no code fence, no commentary. No findings means [].
-"""
+One finding per party per rule that exposure() returned as affected. exposure()
+already decided who is affected and its answer is final -- do not add a party it
+left out, and do not drop one it included because the rule lands late. Timing
+goes in `deadline`.
+
+Take `resource` and `rule_path` from the list below, character for character.
+Quote `next_step` from that rule's "# Next step" section. `who` is the party's
+name exactly as the vault gives it -- "Staff 04", or the company's full name,
+with no role appended.
+
+{table}"""
 
 
 # --------------------------------------------------------------------------
@@ -134,13 +142,17 @@ def load_context() -> str:
 
 
 def _resources() -> dict:
-    """rule path -> government URL, read straight from the vault.
-
-    The extractor copies these rather than recalling them, which is why alerts
-    validate against Alert.resource instead of failing on a hallucinated link.
-    """
+    """rule path -> government URL, read straight from the vault. Anchors the
+    structured pass on the real rule base instead of the model's recall."""
     return {vault._rel(p): vault._split(p)[0].get("resource")
             for p in vault._notes("rules")}
+
+
+def _rule_table() -> str:
+    """The rule base as `path -> url` lines. The structured pass walks this,
+    so completeness is bounded by the vault rather than by the model's recall."""
+    sep = chr(10)
+    return sep.join(f"  {p} -> {u}" for p, u in _resources().items())
 
 
 def _text(msg) -> str:
@@ -171,61 +183,19 @@ def graph():
     saver = SqliteSaver(sqlite3.connect(DB, check_same_thread=False))
     saver.setup()
     return create_react_agent(
-        chat(),
+        # 2000 truncated the findings list mid-sentence and silently lost the
+        # last finding -- the one failure mode a compliance tool cannot have
+        chat(max_tokens=4000),
         TOOLS,
         prompt=SystemMessage(f"{SYSTEM}\n\n{load_context()}"),
+        # the structured pass runs INSIDE the graph, so the model writing it
+        # sees the roster rows and rule frontmatter this run actually fetched.
+        # Re-reading the prose answer instead lost findings to formatting: a
+        # summary table with fewer rows than the discussion above it, and an
+        # extractor faithfully copying the table.
+        response_format=(EXTRACT.format(table=_rule_table()), Findings),
         checkpointer=saver,
     )
-
-
-# --------------------------------------------------------------------------
-# alerts
-# --------------------------------------------------------------------------
-
-def _json_list(text: str):
-    """The first JSON array in a model reply, or None if there isn't a readable
-    one. None and [] are different answers: [] means the model found nothing,
-    None means we could not read what it said."""
-    match = re.search(r"\[.*]", text, re.S)
-    if not match:
-        return None
-    try:
-        data = json.loads(match.group(0))
-    except json.JSONDecodeError:
-        return None
-    return data if isinstance(data, list) else None
-
-
-def extract(answer: str, metrics: Metrics, retry: bool = True) -> list:
-    """The answer's findings as validated Alerts. Invalid ones are dropped.
-
-    A dropped alert is a recorded schema failure, not an exception -- an uncited
-    or malformed alert must not reach a founder, but it must show up in the
-    Schema Validation Pass Rate rather than take the run down with it.
-    """
-    table = "\n".join(f"  {p} -> {u}" for p, u in _resources().items())
-    reply = chat(max_tokens=3000).invoke(
-        [SystemMessage(EXTRACT.format(table=table)), HumanMessage(answer)])
-    metrics.usage(reply.usage_metadata)
-
-    found = _json_list(_text(reply))
-    alerts = []
-    for raw in found or []:
-        if not isinstance(raw, dict):
-            continue
-        metrics.claims += 1
-        metrics.claims_cited += bool(GOV.match(str(raw.get("resource", ""))))
-        try:
-            alerts.append(Alert(**raw))
-            metrics.schema(True)
-        except (ValidationError, TypeError):
-            metrics.schema(False)
-
-    # Unreadable, or everything in it failed validation -- one more go. An
-    # explicit [] is a real answer ("nothing to report"), so it is not retried.
-    if retry and not alerts and found != []:
-        return extract(answer, metrics, retry=False)
-    return alerts
 
 
 # --------------------------------------------------------------------------
@@ -271,10 +241,46 @@ def ask(question: str, thread_id: str | None = None, recursion_limit: int = 12) 
     metrics.turns_used = len(ai) + sum(1 for m in ai if m.tool_calls)
 
     answer = _text(ai[-1]) if ai else ""
-    alerts = extract(answer, metrics) if answer else []
+    # validated by langgraph on the way out, so every alert here already carries
+    # a .gov.sg resource -- Answer Fidelity is enforced, not merely measured
+    found = state.get("structured_response") if completed else None
+    alerts = list(found.findings) if found else []
+    metrics.schema(found is not None)
+    for a in alerts:
+        metrics.claims += 1
+        metrics.claims_cited += bool(GOV.match(str(a.resource)))
     metrics.tasks_completed = int(completed and bool(answer))
     return {"answer": answer, "alerts": alerts,
             "metrics": metrics, "turns": metrics.turns_used}
+
+
+def render(out: dict) -> str:
+    """An ask() result as text.
+
+    The terminal output and the founder's email body are the same string. Two
+    layouts drift apart; one cannot, and a finding that reaches the screen
+    therefore reaches the inbox by construction.
+    """
+    total = sum(a.dollar_impact or 0 for a in out["alerts"])
+    lines = [out["answer"], "", f"{len(out['alerts'])} findings"]
+    if total:
+        lines[-1] += f"  ·  S${total:,.0f} exposed"
+    for a in out["alerts"]:
+        cost = f"S${a.dollar_impact:,.0f}" if a.dollar_impact else "-"
+        lines += ["",
+                  f"  {a.headline}",
+                  f"    who     {', '.join(a.who)}",
+                  f"    lands   {a.deadline or 'standing threshold'}",
+                  f"    cost    {cost}",
+                  f"    do      {a.next_step}",
+                  f"    source  {a.resource}"]
+    return "\n".join(lines)
+
+
+def show(out: dict) -> None:
+    """Print an ask() result. Shared by __main__ and run.py."""
+    print(render(out))
+    print(f"\n{out['metrics'].report()}")
 
 
 if __name__ == "__main__":
@@ -284,18 +290,4 @@ if __name__ == "__main__":
     if not alive:
         sys.exit(f"bedrock unavailable: {detail}")
 
-    out = ask("what changes for us in the next 90 days?")
-    print(out["answer"], "\n")
-
-    print(f"alerts  ->  {len(out['alerts'])} validated")
-    for a in out["alerts"]:
-        cost = f"S${a.dollar_impact:,.0f}" if a.dollar_impact else "-"
-        print(f"\n  {a.headline}")
-        print(f"    who     {', '.join(a.who)}")
-        print(f"    lands   {a.deadline or 'standing threshold'}")
-        print(f"    cost    {cost}")
-        print(f"    do      {a.next_step}")
-        print(f"    source  {a.resource}")
-
-    print()
-    print(out["metrics"].report())
+    show(ask("what changes for us in the next 90 days?"))

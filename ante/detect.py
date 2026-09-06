@@ -17,13 +17,14 @@ import re
 
 import requests
 
-from vault import VAULT, _rel, _split
+from vault import VAULT, _notes, _rel, _split
 
 UA = {"User-Agent": "Mozilla/5.0 (compatible; AnteComplianceBot/0.1)"}
 SNAPSHOTS = VAULT / ".snapshots"
 PAD = 2000          # chars either side of the keyword cluster
 MAX_ANCHORS = 200   # ponytail: O(n^2) anchor scoring; cap it rather than index
 TIMEOUT = 25
+STALE_AFTER = 365   # days before a human re-read is overdue regardless
 
 STOPWORDS = {"from", "rises", "with", "within", "that", "than", "must", "and",
              "the", "for", "due", "aged", "date", "January", "workers", "year",
@@ -44,19 +45,15 @@ def keywords(fm: dict) -> list:
     return [w for w in words if w not in STOPWORDS] or ["the"]
 
 
-def forms(fm: dict) -> set:
-    """Every way a government page might write this rule's figure.
+def forms_for(n, unit) -> set:
+    """Every way a government page might write a figure. Also gates a proposed
+    NEW one, which is why it takes a bare value rather than a rule.
 
     Two traps this avoids. A bare "7" matches "24/7" on any page with a helpline
     number, so small integers are searched only with their unit, and also spelled
     out -- ACRA writes "within seven months after FYE". But a rate table prints
     "16.5" with no % sign, so a decimal is distinctive enough to match bare.
     """
-    return forms_for(fm.get("threshold_after"), fm.get("unit"))
-
-
-def forms_for(n, unit) -> set:
-    """forms() for an arbitrary value -- used to gate a proposed NEW figure."""
     whole = n == int(n)
     plain = str(int(n)) if whole else f"{n:g}"      # 1000000, not 1e+06
     comma = f"{int(n):,}" if whole else f"{n:,}"    # 3,800 -- not 3,800.0
@@ -105,10 +102,6 @@ def digest(s: str) -> str:
     return hashlib.sha256(re.sub(r"\s+", " ", s).strip().encode("utf-8")).hexdigest()[:16]
 
 
-def _slug(rule_path) -> str:
-    return pathlib.Path(rule_path).stem
-
-
 def _snap_file(slug: str) -> pathlib.Path:
     return SNAPSHOTS / f"{slug}.json"
 
@@ -139,7 +132,7 @@ def detect_one(rule_path) -> dict:
     """Did this rule's source move? The whole of Tier 1, for one rule."""
     path = pathlib.Path(rule_path)
     fm, _ = _split(path)
-    slug, url = _slug(path), watch_url(fm)
+    slug, url = path.stem, watch_url(fm)
     rel = _rel(path)
     got = fetch(url)
     if "error" in got:
@@ -167,6 +160,25 @@ def detect_one(rule_path) -> dict:
             "page_text": got["text"]}
 
 
+def stale(days: int = STALE_AFTER) -> list:
+    """Rules no human has re-read lately.
+
+    `checked` and `confirmed` are machine claims and the curator advances them
+    daily. `verified` is a person's claim that the rule still means what we say,
+    and nothing but a person may age it -- so this is the one staleness the bot
+    cannot fix by working harder.
+    """
+    out = []
+    for p in _notes("rules"):
+        verified = _split(p)[0].get("verified")
+        if isinstance(verified, str):
+            verified = dt.date.fromisoformat(verified)
+        age = (dt.date.today() - verified).days if verified else None
+        if age is None or age > days:
+            out.append({"path": _rel(p), "verified": str(verified), "days_old": age})
+    return out
+
+
 def source_check(rule_path: str) -> dict:
     """Is this rule's headline figure still printed on its own government page?
 
@@ -191,7 +203,8 @@ def source_check(rule_path: str) -> dict:
         return {"status": "unverifiable", "url": url,
                 "detail": f"page never mentions {kws[:3]}; likely JS-rendered"}
 
-    for form in forms(fm):
+    want = forms_for(fm.get("threshold_after"), fm.get("unit"))
+    for form in want:
         for m in re.finditer(re.escape(form), text):
             if any(abs(m.start() - a) < 300 for a in anchors):
                 s = max(0, m.start() - 90)
@@ -200,4 +213,4 @@ def source_check(rule_path: str) -> dict:
                         "quote": text[s:m.start() + 110].strip()}
 
     return {"status": "missing", "url": url, "figure": fm.get("threshold_after"),
-            "detail": f"none of {sorted(forms(fm))} appears near {kws[:3]}"}
+            "detail": f"none of {sorted(want)} appears near {kws[:3]}"}

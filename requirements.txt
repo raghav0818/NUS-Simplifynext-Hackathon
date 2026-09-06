@@ -18,3 +18,8 @@ PyYAML==6.0.3
 
 # fetching the .gov.sg source pages the curator checks against
 requests==2.32.4
+
+# the local API the web UI talks to (127.0.0.1 only -- see ante/api.py)
+fastapi==0.141.1
+uvicorn==0.52.4
+python-multipart==0.0.32

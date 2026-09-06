@@ -8,21 +8,37 @@ before wiring it into agent.py.
 """
 import calendar
 import datetime as dt
+import os
 import pathlib
 import re
 import sys
 
 import yaml
 
-VAULT = (pathlib.Path(__file__).parent / "vault").resolve()
+#: ANTE_VAULT lets one install serve one founder per vault, and keeps an upload
+#: from ever landing in the synthetic demo vault whose findings are asserted below.
+VAULT = pathlib.Path(
+    os.environ.get("ANTE_VAULT") or pathlib.Path(__file__).parent / "vault").resolve()
 GOV = re.compile(r"^https://[\w.-]*\.gov\.sg/", re.I)
 TODAY = dt.date.today()
 
 RULE_REQUIRED = ("clock", "effective", "applies_to", "trigger_field",
-                 "threshold_after", "unit", "severity", "resource", "verified")
+                 "threshold_after", "unit", "severity", "resource", "verified",
+                 "bites")
 CLOCKS = {"law", "growth", "recurring"}
 UNITS = {"SGD_per_month", "SGD_per_year", "percent", "months"}
 SEVERITIES = {"high", "medium", "low"}
+
+#: Which side of its threshold a rule bites on. Stated by the rule rather than
+#: re-derived from its prose, because "is this person non-compliant" is
+#: arithmetic and must not vary between runs.
+BITES = {
+    "below":    lambda v, fm: v is not None and v < fm["threshold_after"],
+    "above":    lambda v, fm: v is not None and v > fm["threshold_before"],
+    "band":     lambda v, fm: True,          # a rate change hits the whole band
+    "forecast": lambda v, fm: v is not None and v >= 0.8 * fm["threshold_after"],
+    "always":   lambda v, fm: True,          # a filing deadline needs no test
+}
 PASS_TYPES = {"citizen", "pr", "s_pass", "ep", "entrepass"}
 SECTIONS = ("# What changes", "# Who it hits", "# Cost", "# Next step", "# Citations")
 WRITABLE = ("alerts/", "counterparties/")
@@ -70,6 +86,22 @@ def _band(fm):
 
 def _company():
     return _split(VAULT / "company" / "profile.md")[0]
+
+
+def _fye():
+    """(month, day) of the financial year end.
+
+    Tolerates a full YYYY-MM-DD as well as MM-DD -- YAML turns an unquoted
+    2026-12-31 into a date object, and a founder typing a whole date into an
+    onboarding box is not a mistake worth losing every finding over. Anything
+    genuinely unparseable raises here, where validate() reports it, rather than
+    silently emptying upcoming() at query time.
+    """
+    raw = _company().get("financial_year_end")
+    parts = str(raw).split("-")
+    if len(parts) < 2 or not all(p.strip().isdigit() for p in parts[-2:]):
+        raise ValueError(f"financial_year_end must be MM-DD, got {raw!r}")
+    return int(parts[-2]), int(parts[-1])
 
 
 # --------------------------------------------------------------------------
@@ -170,8 +202,15 @@ def vault_write(path: str, frontmatter: dict, body: str) -> dict:
 # validator -- the integration guard
 # --------------------------------------------------------------------------
 
-def validate() -> list:
-    """Every problem found, as a list of strings. Empty list = vault is sound."""
+def validate(strict: bool = True) -> list:
+    """Every problem found, as a list of strings. Empty list = vault is sound.
+
+    strict=False for a vault built from a real upload. The only difference is the
+    "this rule matches nobody" check: in the curated demo vault a dead rule is a
+    curation bug, but in a founder's own vault it means they have no S Pass
+    holders and nobody over 55 -- which is compliance, not corruption. Every
+    other check, including an applies_to outside the contract, still applies.
+    """
     problems = []
     seen_applies_to = set()
 
@@ -187,6 +226,10 @@ def validate() -> list:
             problems.append(f"{where}: clock {fm.get('clock')!r} not in {sorted(CLOCKS)}")
         if fm.get("unit") not in UNITS:
             problems.append(f"{where}: unit {fm.get('unit')!r} not in {sorted(UNITS)}")
+        if fm.get("bites") not in BITES:
+            problems.append(f"{where}: bites {fm.get('bites')!r} not in {sorted(BITES)}")
+        if fm.get("bites") == "above" and "threshold_before" not in fm:
+            problems.append(f"{where}: bites 'above' needs threshold_before to compare to")
         if fm.get("severity") not in SEVERITIES:
             problems.append(f"{where}: severity {fm.get('severity')!r} not in {sorted(SEVERITIES)}")
         if not GOV.match(str(fm.get("resource", ""))):
@@ -210,13 +253,19 @@ def validate() -> list:
     for key in ("uen", "financial_year_end", "headcount", "annual_revenue_run_rate"):
         if key not in company:
             problems.append(f"company/profile.md: missing '{key}'")
+    try:
+        # a bad FYE takes out every recurring rule, so it is caught here rather
+        # than as an empty findings list nobody can explain
+        _fye()
+    except ValueError as exc:
+        problems.append(f"company/profile.md: {exc}")
 
     # the join has to actually join -- a rule nobody matches is a dead rule
     for value in sorted(seen_applies_to, key=str):
         hit = roster_scan(value)
         if "error" in hit:
             problems.append(f"applies_to {value!r}: {hit['error']}")
-        elif hit["matched"] == 0:
+        elif hit["matched"] == 0 and strict:
             problems.append(f"applies_to {value!r} matches nobody in people/")
 
     return problems
@@ -237,7 +286,7 @@ def _lands_on(fm):
     if fm.get("clock") == "law":
         return fm.get("effective")
     if fm.get("clock") == "recurring":
-        month, day = (int(x) for x in str(_company()["financial_year_end"]).split("-"))
+        month, day = _fye()
         for year in range(TODAY.year - 1, TODAY.year + 3):
             due = _add_months(dt.date(year, month, day), int(fm["threshold_after"]))
             if due >= TODAY:
@@ -283,6 +332,31 @@ def upcoming(horizon_days=500, lookback_days=400) -> list:
     return out
 
 
+def exposure() -> dict:
+    """Who is actually on the wrong side of each rule. The join, done in Python.
+
+    `upcoming()` reports every subject a rule could touch; this applies the
+    rule's own `bites` test and keeps only those it really touches. Deciding
+    non-compliance is arithmetic, so it is done here rather than by a model that
+    has to re-derive it from prose on every run -- the same split the curator
+    uses, where the model describes and Python decides.
+    """
+    out = []
+    for rule in upcoming():
+        fm, _ = _split(VAULT / rule["path"])
+        test = BITES[fm["bites"]]
+        hit = [s for s in rule["subjects"] if test(s["value"], fm)]
+        if hit:
+            out.append({**{k: rule[k] for k in
+                           ("path", "title", "clock", "lands", "days_until",
+                            "in_force", "severity", "trigger_field",
+                            "threshold_after", "unit", "resource")},
+                        "bites": fm["bites"],
+                        "threshold_before": fm.get("threshold_before"),
+                        "affected": hit})
+    return {"rules_with_exposure": len(out), "rules": out}
+
+
 # --------------------------------------------------------------------------
 
 if __name__ == "__main__":
@@ -310,6 +384,20 @@ if __name__ == "__main__":
     assert vault_read("alerts/_selfcheck.md")["frontmatter"]["rule"] == "rules/_selfcheck.md"
     (VAULT / "alerts" / "_selfcheck.md").unlink()
     print("tools ok  ->  search, read, roster_scan, write\n")
+
+    # the money path: who is non-compliant is arithmetic, so it is asserted.
+    # Staff 10 is an EP holder already ABOVE the coming floor and Staff 03 is
+    # under the old CPF ceiling -- both must stay out, or the join is too eager.
+    exp = exposure()
+    hit = {r["path"]: {a["who"] for a in r["affected"]} for r in exp["rules"]}
+    assert exp["rules_with_exposure"] == 6, exp["rules_with_exposure"]
+    assert hit["rules/s-pass-qualifying-salary-2027.md"] == {"Staff 04"}
+    assert hit["rules/ep-qualifying-salary-2027.md"] == {"Staff 07"}, "Staff 10 complies"
+    assert hit["rules/cpf-ow-ceiling-2026.md"] == {"Staff 01"}, "Staff 03 is under it"
+    assert hit["rules/cpf-senior-worker-rates-2027.md"] == {"Staff 02"}
+    assert all(len(v) == 1 for v in hit.values()), hit
+    print(f"exposure ok  ->  {exp['rules_with_exposure']} rules bite, "
+          f"{sum(len(v) for v in hit.values())} parties, no compliant party included")
 
     print(f"what lands within 500 days of {TODAY}:")
     for rule in upcoming():

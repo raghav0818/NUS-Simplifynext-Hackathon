@@ -11,8 +11,11 @@ trigger_field: annual_revenue_run_rate
 threshold_before: null
 threshold_after: 1000000
 unit: SGD_per_year
+bites: forecast  # registration is due once a crossing is forecast
 severity: high
 verified: 2026-09-04
+checked: 2026-09-06
+confirmed: 2026-09-06
 ---
 
 # What changes

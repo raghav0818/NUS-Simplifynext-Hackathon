@@ -11,8 +11,11 @@ trigger_field: financial_year_end
 threshold_before: null
 threshold_after: 7
 unit: months
+bites: always  # a filing deadline always applies
 severity: medium
 verified: 2026-09-04
+checked: 2026-09-06
+confirmed: 2026-09-06
 ---
 
 # What changes

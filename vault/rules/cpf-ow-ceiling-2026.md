@@ -11,10 +11,13 @@ trigger_field: monthly_salary
 threshold_before: 7400
 threshold_after: 8000
 unit: SGD_per_month
+bites: above  # pay above the OLD ceiling is newly CPF-liable
 severity: medium
 verified: 2026-09-04
 watch_also: https://www.cpf.gov.sg/employer/infohub/news/cpf-related-announcements
-source_render: js  # page is JS-rendered; freshness.py cannot confirm this figure
+source_render: js  # page is JS-rendered; the fetcher cannot confirm this figure
+checked: 2026-09-06
+confirmed: 2026-09-06
 ---
 
 # What changes

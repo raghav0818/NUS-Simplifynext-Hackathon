@@ -11,6 +11,7 @@ trigger_field: monthly_salary
 threshold_before: 3300
 threshold_after: 3600
 unit: SGD_per_month
+bites: below  # a qualifying-salary floor bites people paid under it
 severity: high
 verified: 2026-09-04
 ---

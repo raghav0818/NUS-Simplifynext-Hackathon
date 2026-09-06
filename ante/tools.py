@@ -55,6 +55,24 @@ def roster_scan(applies_to: str) -> dict:
 
 
 @tool
+def exposure() -> dict:
+    """Who is actually on the wrong side of each rule. Call this FIRST.
+
+    Does the whole join for you: every rule, the people or company it touches,
+    and the arithmetic of who breaches it -- already applied. Returns only the
+    parties genuinely affected, each with their own number, the threshold, the
+    date it lands, and the government URL.
+
+    This is the authoritative list of findings. Report every party it returns,
+    and report no party it does not return. It is complete whatever window the
+    founder asked about: a rule landing in 2028 still appears, because the pay
+    review that fixes it happens now. Use vault_read for the wording of each
+    rule's "# Next step" and its cost, not to second-guess who is affected.
+    """
+    return _vault.exposure()
+
+
+@tool
 def source_check(rule_path: str) -> dict:
     """Verify a rule's headline figure is still printed on its government page.
 
@@ -79,6 +97,7 @@ def vault_write(path: str, frontmatter: dict, body: str) -> dict:
 
 #: Bound to the advisor graph. The curator does NOT get these -- its model is
 #: given no tools at all, so it can only describe what it read.
-TOOLS = [vault_search, vault_read, roster_scan, source_check, vault_write]
+TOOLS = [exposure, vault_search, vault_read, roster_scan, source_check,
+         vault_write]
 
 BY_NAME = {t.name: t for t in TOOLS}
