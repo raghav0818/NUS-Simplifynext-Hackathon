@@ -5,7 +5,7 @@ env/*.bak
 __pycache__/
 *.pyc
 .venv/
-state.db
+state.db*
 vault/.snapshots/
 vault/.history/
 
