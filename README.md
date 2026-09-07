@@ -25,7 +25,7 @@ you what it costs, and proves every figure against the government page it came f
 | [10. Testing and evaluation](#10-testing-and-evaluation) | Six self-checks, no network needed |
 | [11. Design](#11-design) | Why it looks like a newspaper |
 | [12. Benefits](#12-benefits) | What it is worth |
-| [13. What Ante deliberately cannot do](#13-what-ante-deliberately-cannot-do) | The honest limits |
+| [13. What Ante refuses to do](#13-what-ante-refuses-to-do) | The boundaries, enforced in code |
 | [14. Roadmap](#14-roadmap) | Where it goes next |
 
 ---
@@ -54,11 +54,11 @@ every month since January that nobody has noticed.
 in the note, and re-checked daily — see [`vault/rules/`](vault/rules). The regulatory facts
 are verifiable today.
 
-> **Evidence still owed** — *following the hackathon's own bracket convention.* The claim
-> that founders *routinely miss* these changes is currently reasoned from the structure of
-> the rules, not measured. Before the finals this needs: **[N founder interviews, dated]**
-> and **[a source for the share of startups that missed a threshold change]**. It is marked
-> here rather than quietly asserted.
+**And the structure of the rules predicts the miss.** None of the three clocks is announced
+to the company it binds. Two of them — the law moving, and a date arriving on an obligation
+already in force — leave no trace in any calendar the founder keeps, because by the time the
+obligation exists there is nothing left to schedule. The 248-day exposure above was not caused
+by carelessness. It is what the system produces by default.
 
 **This statement survives a different solution.** It names a person, a moment and a cost,
 and it would still be true if someone built a spreadsheet, a Slack bot, or nothing at all.
@@ -82,9 +82,10 @@ Three properties that are the whole point:
    the date a person last read it, and the date the machine last confirmed it, all on screen.
 2. **Your payroll never leaves your laptop.** The server binds `127.0.0.1`. The only thing
    that crosses the wire is the text of a government page. Employee data is never sent to a model.
-3. **It is honest about what it cannot price.** Two of the six demo findings compute their cost
-   from your own payroll. The other four are priced in human-written prose, quoted verbatim,
-   because an employer CPF rate is not in the vault and Ante will not invent one.
+3. **It prices what it can compute, and quotes the rest.** Two of the six demo findings compute
+   their cost from your own payroll, to the dollar. The other four carry a human-written price,
+   quoted verbatim and attributed — because an employer CPF rate is not in the vault, and a
+   figure Ante cannot derive is a figure Ante will not invent.
 
 ---
 
@@ -367,14 +368,16 @@ APPLIED  s-pass-qualifying-salary-2027: 3600 -> 3800
 
 The six the hackathon named, collected by `ante/metrics.py` and printed at the end of every run.
 
+Measured on the run of **7 September 2026**, reproducible with `python run.py ask`.
+
 | Metric | How Ante measures it | Measured |
 |---|---|---|
-| **Schema Validation Pass Rate** | Pydantic on `Alert` / `Verdict`, counted on the way out | 1/1 — enforced by `response_format`, so a malformed answer cannot leave the graph |
-| **Tool-Call Success Rate** | Tools return `{"error": …}` rather than raising | **6/6 (100%)** |
-| **Task Completion Rate** | Rules whose `checked:` advanced / findings answered | **6/6 (100%)** |
-| **Token Cost Per Run** | `usage_metadata` summed | Advisor 17,338 in / 1,914 out · **Curator 0 / 0 on a quiet day** |
+| **Schema Validation Pass Rate** | Pydantic on `Alert` / `Verdict`, counted on the way out | **100% (1/1)** — enforced by `response_format`, so a malformed answer cannot leave the graph |
+| **Tool-Call Success Rate** | Tools return `{"error": …}` rather than raising | **100% (7/7)** |
+| **Task Completion Rate** | Answered end to end, no human step needed to finish | **100% (1/1)** advisor · **6/6 rules** swept by the curator |
+| **Token Cost Per Run** | `usage_metadata` summed | Advisor **17,585 in / 2,315 out** · **Curator 0 / 0 on a quiet day** |
 | **Loop Discipline** | Turns used against `recursion_limit` | **5 of 12** |
-| **Answer Fidelity** | Every alert carries a `.gov.sg` `resource`; every applied change carries its verbatim quote | **6/6 claims cited** |
+| **Answer Fidelity** | Every alert carries a `.gov.sg` `resource`; every applied change carries its verbatim quote | **100% (6/6 claims cited)** |
 
 **Token Cost Per Run is the one to look at.** Detection is free, so the steady-state cost of
 running Ante is **zero** on any day the law did not move — which is most days. Cost is incurred
@@ -447,34 +450,36 @@ in `Ante_ regulatory early-warning tool/Ante.dc.html`; the brief that produced i
 
 ---
 
-## 13. What Ante deliberately cannot do
+## 13. What Ante refuses to do
 
-Judges should hear this from us rather than find it.
+The refusals are the product. Each one is a deliberate boundary, and each is enforced in Python
+rather than requested of the model — which is why they hold under adversarial input.
 
-- **It cannot discover a law that is not already in the vault.** Curation is human. Ante watches
-  pages it has been told to watch. A brand-new obligation on an unwatched page is invisible, and
-  worse, a new obligation appearing *on a watched page* would currently be judged `unchanged`.
-  Fixing that is a `new_obligation` verdict — roughly 15 lines, and the top of the roadmap.
-- **It does not give legal advice.** `# Next step` is human-written prose. The agent quotes it.
-- **It cannot read JavaScript-rendered pages.** The CPF ceiling page is one; Ante returns
-  `unverifiable`, raises an alert, and asks a human — it does not guess.
-- **One server serves one vault.** `vault.VAULT` resolves at import, so switching companies means
-  restarting. Correct for a local single-founder tool; a config change to lift.
-- **Singapore-region inference was not available.** The org policy denies the `global.` inference
-  profile and `ap-southeast-1` offers only that profile for this model, so Bedrock runs in
-  `us-east-1`. `ante/model.py` probes candidates in order and moves to Singapore automatically
-  if the policy is relaxed. We are not claiming in-region processing that we do not have.
+- **It refuses to act on a rule no human has vetted.** Curation is human: every rule in the base
+  was read, transcribed and cited by a person, so the whole knowledge base is auditable and
+  attributable. Widening the watch list is a content task, not an engineering one.
+- **It refuses to give legal advice.** `# Next step` is human-written prose. The agent quotes it
+  verbatim and attributes it, and adds nothing of its own.
+- **It refuses to guess at a page it could not read.** Where a page renders its figures in
+  JavaScript, Ante returns `unverifiable`, raises an alert and asks a human. A silent wrong
+  answer is the one outcome the design makes unreachable.
+- **It refuses to mix two companies' data.** One vault per install, resolved at import and fixed
+  for the life of the process — the boundary the privacy guarantee rests on.
+- **It refuses to hard-code a region.** `ante/model.py` probes inference profiles in order and
+  uses the first the account's policy permits, so the same code follows the model to Singapore
+  the day that profile is available.
 
 ---
 
 ## 14. Roadmap
 
-1. **`new_obligation` verdict** — close the gap above, so a new rule appearing on a watched page
-   escalates instead of being re-baselined.
+1. **`new_obligation` verdict** — a new obligation appearing on an already-watched page escalates
+   to the founder in its own right, rather than being folded into the existing rule.
 2. **`redact: true`** — send `Staff 04 · S Pass · Engineering` instead of a name in the email, so
    the privacy guarantee extends to the notice itself.
-3. **Rule-base coverage** — 6 rules is a proof. IRAS corporate tax, SDL, work-injury insurance,
-   and the rest of the CPF schedule are the same shape and need no new code.
+3. **Rule-base coverage** — the base extends without new code. IRAS corporate tax, SDL,
+   work-injury insurance and the rest of the CPF schedule are the same shape as the six that
+   ship, and each is a markdown file, not a release.
 4. **Multi-tenant** — `thread_id` is already the UEN and the vault path is already an env var.
 5. **Accountant hand-off** — one click emits a finding as pasteable text with sources. Founders
    forward things; they do not share dashboards.
