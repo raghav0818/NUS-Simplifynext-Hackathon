@@ -22,7 +22,7 @@ import smtplib
 import sys
 from email.message import EmailMessage
 
-from vault import VAULT, _company, exposure
+from vault import MONEY, VAULT, _company, exposure
 
 QUESTION = "what changes for us in the next 90 days?"
 STATE = VAULT / ".brief.json"
@@ -76,6 +76,35 @@ def send(subject: str, body: str) -> dict:
         return {"outbox": str(f), "why": f"{type(exc).__name__}: {exc}"}
 
 
+_MONTHS = ("January", "February", "March", "April", "May", "June", "July",
+           "August", "September", "October", "November", "December")
+
+
+def _day(iso) -> str:
+    """A date as a person writes it. Anything unparseable passes through."""
+    try:
+        d = dt.date.fromisoformat(str(iso))
+    except (TypeError, ValueError):
+        return str(iso)
+    return f"{d.day} {_MONTHS[d.month - 1]} {d.year}"
+
+
+def _amount(value, unit) -> str:
+    """A figure spelled in the unit its own rule states it in.
+
+    The raw values are correct but unreadable in an email -- "8200" next to
+    "7400 SGD_per_month" is a diff, not a sentence -- and this is the one
+    artefact of Ante a founder reads on a phone before opening anything.
+    """
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        return str(value)
+    if unit in MONEY:
+        return f"S${value:,.0f}" + ("/mo" if unit == "SGD_per_month" else "/yr")
+    if unit == "percent":
+        return f"{value}%"
+    return f"{value:,.0f}" if float(value).is_integer() else str(value)
+
+
 def offline(exp: dict) -> str:
     """The brief without the model.
 
@@ -84,10 +113,15 @@ def offline(exp: dict) -> str:
     figures-only rather than to silence. Every number here still came off a
     government page; only the commentary is missing.
     """
+    unit = lambda r: r.get("unit")
     lines = []
+    if exp.get("annual_gap_total"):
+        lines.append(f"S${exp['annual_gap_total']:,.0f} a year is provable from your own payroll. "
+                     f"The rest is priced in each rule's own cost note.")
     for r in exp["rules"]:
+        lands = _day(r["lands"]) if r["lands"] else "standing threshold"
         lines += ["", f"  {r['title']}",
-                  f"    lands   {r['lands'] or 'standing threshold'}"
+                  f"    lands   {lands}"
                   f"{'   (IN FORCE)' if r['in_force'] else ''}"]
         for a in r["affected"]:
             # only a numeric trigger has a meaningful comparison. An age band or
@@ -95,18 +129,20 @@ def offline(exp: dict) -> str:
             # months"), and the date above already carries the point.
             v = a["value"]
             if not isinstance(v, (int, float)):
-                versus = (f": {v} today, {a['age_band_on']} by {r['lands']}"
+                versus = (f": {v} today, {a['age_band_on']} by {lands}"
                           if a.get("age_band_on") else "")
             elif r.get("bites") == "above":
                 # a ceiling bites people over the OLD figure; printing the new
                 # one reads as "8000 vs 8000" and makes a real finding look wrong
-                versus = f": {v}, over the old {r['threshold_before']} {r['unit']}"
+                versus = (f": {_amount(v, unit(r))}, over the old "
+                          f"{_amount(r['threshold_before'], unit(r))}")
             else:
-                versus = f": {v} vs {r['threshold_after']} {r['unit']}"
+                versus = (f": {_amount(v, unit(r))} against "
+                          f"{_amount(r['threshold_after'], unit(r))}")
             # the gap is arithmetic over two vault figures, so it survives an
             # expired token along with everything else here
             if a.get("annual_gap"):
-                versus += f"  (S${a['annual_gap']:,.0f}/yr short)"
+                versus += f"  ({_amount(a['annual_gap'], 'SGD_per_year')} short)"
             lines.append(f"    who     {a['who']}{versus}")
         lines.append(f"    source  {r['resource']}")
     return "\n".join(lines)

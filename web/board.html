@@ -1,0 +1,776 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ante · board</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><text y='13' font-size='13'>&#9201;</text></svg>">
+<link rel="stylesheet" href="broadsheet.css">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Broadsheet, applied to the board. Every colour here is a token from
+   broadsheet.css; the literals are repeated so the page still reads correctly
+   if the stylesheet fails to load on a machine with no network. */
+:root{
+  --paper:#f3f2f2; --ink:#201e1d; --muted:#605d5d; --faint:#7d7979;
+  --rule:#d7d3d3; --hair:#eae7e7; --panel:#eae9e9; --field:#f8f4f4;
+  --spot:#d6006c; --spot-ink:#aa0b56; --spot-deep:#79103d; --spot-bg:#fff1f4;
+  --mark:#ffdee6; --link:#006786; --cyan:#0088b0;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--paper);color:var(--ink);
+  font-family:"Source Serif 4",Georgia,"Times New Roman",serif;-webkit-font-smoothing:antialiased}
+a{color:var(--link);text-decoration:none;border-bottom:1px solid #99e0ff}
+a:hover{color:#0a303e;border-bottom-color:var(--cyan)}
+summary{list-style:none}
+summary::-webkit-details-marker{display:none}
+input,select,button,textarea{font-family:inherit}
+:focus-visible{outline:2px solid var(--cyan);outline-offset:2px}
+@keyframes slidein{from{transform:translateX(24px);opacity:0}to{transform:translateX(0);opacity:1}}
+
+.m{font-family:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace}
+.wrap{max-width:1320px;padding:0 clamp(20px,6vw,120px) 160px}
+h1,h2,h3{font-weight:400;margin:0}
+
+/* masthead ---------------------------------------------------------------- */
+.head{display:flex;flex-wrap:wrap;gap:14px 40px;align-items:baseline;
+  padding:52px 0 16px;border-bottom:3px solid var(--ink)}
+.head-thin{height:1px;background:var(--ink);margin-top:3px}
+.brand{font-size:19px;letter-spacing:.02em}
+.kicker{font-size:11px;letter-spacing:.14em;color:var(--faint);text-transform:uppercase}
+
+.lede{margin:26px 0 0;font-size:clamp(30px,3.9vw,55px);line-height:1.16;
+  letter-spacing:-.015em;max-width:30ch;text-wrap:pretty}
+.sub{margin:34px 0 0;font-size:19px;line-height:1.6;color:var(--muted);
+  max-width:62ch;text-wrap:pretty}
+
+/* the in-force banner ----------------------------------------------------- */
+.banner{margin-top:88px;background:var(--spot-bg);
+  padding:44px clamp(20px,4vw,56px) 48px;border-top:3px solid var(--spot)}
+.banner-grid{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(200px,.85fr);
+  gap:20px 64px;margin-top:26px;align-items:start}
+.banner-claim{font-size:clamp(22px,2.4vw,33px);line-height:1.24;letter-spacing:-.01em;
+  max-width:34ch;text-wrap:pretty}
+.banner-fig{font-size:clamp(28px,3.4vw,46px);line-height:1;letter-spacing:-.02em;color:var(--spot-ink)}
+
+/* timeline ---------------------------------------------------------------- */
+.tl{position:relative;margin-top:56px}
+.tl-past{position:absolute;left:0;right:0;top:-28px;background:var(--spot-bg)}
+.tl-axis{position:absolute;left:132px;width:1px;background:var(--rule)}
+.tl-axis.hot{width:2px;background:var(--spot);transform:translateX(-1px)}
+.tl-today{position:absolute;left:0;right:0}
+.tl-today .bar{height:2px;background:var(--ink)}
+.tl-group{position:absolute;left:0;right:0}
+.tl-when{position:absolute;left:0;width:104px;text-align:right;top:-4px}
+.tl-dot{position:absolute;left:132px;top:4px;width:11px;height:11px;
+  background:var(--ink);transform:translate(-50%,-50%)}
+.tl-rows{margin-left:172px}
+.tl-row{display:flex;flex-wrap:wrap;gap:6px 32px;align-items:baseline;padding-bottom:26px}
+
+/* findings ---------------------------------------------------------------- */
+.chip{cursor:pointer;background:transparent;border:1px solid var(--rule);border-radius:2px;
+  padding:7px 14px;font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+.chip:hover{border-color:var(--cyan);color:var(--link)}
+.chip[aria-pressed=true]{background:var(--ink);color:var(--paper);border-color:var(--ink)}
+.find{border-top:1px solid var(--rule)}
+.find summary{display:grid;grid-template-columns:120px minmax(0,1fr) 200px;
+  gap:12px 36px;padding:28px 0;cursor:pointer;align-items:baseline}
+.find summary:hover .find-title{color:var(--link)}
+.find-title{font-size:22px;line-height:1.32;letter-spacing:-.005em;max-width:44ch;text-wrap:pretty}
+.find-body{display:grid;grid-template-columns:120px minmax(0,1fr) 200px;gap:36px;padding:0 0 44px}
+.eyebrow{font-size:10.5px;letter-spacing:.16em;color:var(--faint);text-transform:uppercase}
+.btn{cursor:pointer;background:var(--ink);color:var(--paper);border:1px solid var(--ink);
+  border-radius:2px;padding:12px 22px;font-size:16px}
+.btn:hover{background:#444141}
+.btn-o{cursor:pointer;background:transparent;color:var(--ink);border:1px solid var(--ink);
+  border-radius:2px;padding:12px 22px;font-size:16px}
+.btn-o:hover{border-color:var(--cyan);color:var(--link)}
+.btn-cy{cursor:pointer;background:var(--cyan);color:#fff;border:1px solid var(--cyan);
+  border-radius:2px;padding:14px 28px;font-size:17px}
+.btn-cy:hover{background:#1186ac}
+.btn:disabled,.btn-cy:disabled,.btn-o:disabled{opacity:.45;cursor:default}
+
+/* prose from the vault ---------------------------------------------------- */
+.prose p{margin:0 0 14px;font-size:18px;line-height:1.65;text-wrap:pretty}
+.prose p:last-child{margin-bottom:0}
+.prose table{border-collapse:collapse;margin:14px 0;font-size:15.5px}
+.prose th,.prose td{text-align:left;padding:7px 26px 7px 0;border-bottom:1px solid var(--hair)}
+.prose th{font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--faint);font-weight:400}
+.prose li{font-size:18px;line-height:1.65;margin-bottom:6px}
+.prose code,.mono-in{font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:.88em}
+
+.quote{margin-top:40px;background:var(--panel);padding:30px clamp(18px,3vw,38px);
+  /* the alert body quotes a source URL verbatim, and a .gov.sg path is long */
+  overflow-wrap:anywhere}
+.quote mark{background:var(--mark);color:inherit;padding:1px 4px}
+.quote .prose{max-width:88ch}
+
+/* drawer ------------------------------------------------------------------ */
+.scrim{position:fixed;inset:0;background:rgba(32,30,29,.32);z-index:40}
+.drawer{position:fixed;top:0;right:0;bottom:0;width:min(680px,94vw);background:var(--paper);
+  z-index:41;overflow:auto;box-shadow:0 12px 32px rgba(45,43,43,.22);animation:slidein .22s ease-out}
+.fm{display:grid;grid-template-columns:180px minmax(0,1fr);gap:16px;padding:10px 0;
+  border-bottom:1px solid var(--hair);font-size:12.5px}
+
+.note{font-size:16.5px;line-height:1.6;color:var(--muted);max-width:64ch;text-wrap:pretty}
+.dead{color:var(--spot-ink)}
+
+@media (max-width:860px){
+  .find summary,.find-body{grid-template-columns:88px minmax(0,1fr)}
+  .find summary>:nth-child(3),.find-body>:nth-child(3){grid-column:1/-1;text-align:left}
+  .banner-grid{grid-template-columns:minmax(0,1fr)}
+  .tl-rows{margin-left:0;padding-top:26px}
+  .tl-when{position:static;width:auto;text-align:left}
+  .tl-axis,.tl-dot{display:none}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="head">
+    <div class="brand">Ante</div>
+    <div class="brand" id="co">&nbsp;</div>
+    <div class="m kicker" id="co-meta"></div>
+    <div class="m kicker" id="swept" style="margin-left:auto"></div>
+  </div>
+  <div class="head-thin"></div>
+
+  <h1 class="lede" id="lede">Reading the vault&hellip;</h1>
+  <p class="sub" id="sub"></p>
+
+  <div id="banner"></div>
+
+  <section style="margin-top:104px">
+    <div style="display:flex;flex-wrap:wrap;gap:10px 28px;align-items:baseline">
+      <h2 style="font-size:26px;letter-spacing:-.01em">Eighteen months, drawn to scale</h2>
+      <div class="m kicker">Distance is time</div>
+    </div>
+    <div class="note" style="margin-top:14px" id="tl-note"></div>
+    <div class="tl" id="tl"></div>
+    <div class="note" style="margin-top:22px" id="tl-standing"></div>
+  </section>
+
+  <section style="margin-top:112px">
+    <div style="display:flex;flex-wrap:wrap;gap:16px 28px;align-items:baseline;justify-content:space-between">
+      <h2 style="font-size:26px;letter-spacing:-.01em" id="find-h">Findings</h2>
+      <div style="display:flex;flex-wrap:wrap;gap:8px" id="filters"></div>
+    </div>
+    <div style="margin-top:34px" id="findings"></div>
+    <div class="note" style="margin-top:28px;font-style:italic" id="ledger"></div>
+  </section>
+
+  <section style="margin-top:112px" id="curator"></section>
+
+  <section style="margin-top:112px">
+    <h2 style="font-size:26px;letter-spacing:-.01em">Ask Ante</h2>
+    <div style="display:flex;flex-wrap:wrap;gap:12px;margin-top:28px;max-width:820px">
+      <input id="q" value="what changes for us in the next 90 days?"
+             aria-label="Ask a question about your vault"
+             style="flex:1;min-width:240px;font-size:18px;padding:14px 16px;border:1px solid var(--ink);border-radius:2px;background:var(--field);color:var(--ink)">
+      <button class="btn-cy" id="ask">Ask</button>
+    </div>
+    <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:14px" id="suggest"></div>
+    <div id="answer" style="margin-top:36px;max-width:70ch"></div>
+  </section>
+
+  <section style="margin-top:112px;border-top:3px solid var(--ink);padding-top:34px">
+    <h2 style="font-size:26px;letter-spacing:-.01em">The morning brief</h2>
+    <p class="sub" style="margin-top:18px">One email, and only when something moved. It sweeps
+      the six sources first, so this is the whole product in one click.</p>
+    <div style="display:flex;flex-wrap:wrap;gap:12px;margin-top:26px;align-items:center">
+      <button class="btn" id="brief">Send this morning&rsquo;s brief</button>
+      <span class="m" style="font-size:12px;color:var(--faint)" id="brief-to"></span>
+    </div>
+    <div id="brief-out" style="margin-top:22px"></div>
+  </section>
+
+</div>
+
+<div id="drawer"></div>
+
+<script>
+"use strict";
+/* The board renders what the API returns. Nothing on this page is computed in
+   the browser except layout: no threshold arithmetic, no currency conversion,
+   no derived deadline. If a figure is not in a payload, it does not appear.
+   web/board.check.mjs asserts exactly that against a running server. */
+
+const API = location.protocol === "file:" ? "http://127.0.0.1:8000" : "";
+const $ = (id) => document.getElementById(id);
+
+const esc = (s) => String(s ?? "").replace(/[&<>"]/g,
+  (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+
+/** Obsidian markdown as the vault stores it, read back as the prose it stands for. */
+const plain = (s) => String(s ?? "")
+  .replace(/\[([^\]]+)\]\([^)]*\)/g, "$1")   // [title](rules/x.md) -> title
+  .replace(/`([^`]+)`/g, "$1")               // `unverifiable` -> unverifiable
+  .replace(/\*\*([^*]+)\*\*/g, "$1");
+
+const money = (n) => "S$" + Number(n).toLocaleString("en-SG",
+  { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+
+const MONTHS = ["January", "February", "March", "April", "May", "June",
+  "July", "August", "September", "October", "November", "December"];
+
+/** An ISO date as a person writes it. Anything else is passed through as-is. */
+function day(iso) {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(iso ?? ""));
+  return m ? `${+m[3]} ${MONTHS[+m[2] - 1]} ${m[1]}` : String(iso ?? "");
+}
+
+/** A figure reads big only when it is one number. A move ("A → B") needs room. */
+const figSize = (fig, big, small) =>
+  /→/.test(fig) ? small : /^S\$/.test(fig) ? big : small;
+
+/** A pipe table as the rule notes write it -> a real table. */
+function table(lines) {
+  const cells = (l) => l.trim().replace(/^\||\|$/g, "").split("|").map((c) => c.trim());
+  const head = cells(lines[0]);
+  const rows = lines.slice(2).map(cells);
+  return "<table><thead><tr>" + head.map((h) => "<th>" + esc(plain(h)) + "</th>").join("")
+    + "</tr></thead><tbody>" + rows.map((r) => "<tr>"
+      + r.map((c) => "<td>" + esc(plain(c)) + "</td>").join("") + "</tr>").join("")
+    + "</tbody></table>";
+}
+
+/** Vault prose -> HTML. Tables and lists survive; hard wraps are reflowed away. */
+function prose(md) {
+  const src = String(md ?? "").split("\n");
+  let out = "", para = [], tbl = [], list = [];
+  const flushP = () => { if (para.length) { out += "<p>" + esc(plain(para.join(" "))) + "</p>"; para = []; } };
+  const flushT = () => { if (tbl.length) { out += table(tbl); tbl = []; } };
+  const flushL = () => { if (list.length) { out += "<ul>" + list.map((i) => "<li>" + esc(plain(i)) + "</li>").join("") + "</ul>"; list = []; } };
+  const flush = () => { flushP(); flushT(); flushL(); };
+
+  for (const line of src) {
+    const t = line.trim();
+    if (!t) { flush(); continue; }
+    if (t.startsWith("|")) { flushP(); flushL(); tbl.push(t); continue; }
+    if (/^[-*]\s+/.test(t)) { flushP(); flushT(); list.push(t.replace(/^[-*]\s+/, "")); continue; }
+    flushT(); flushL(); para.push(t);
+  }
+  flush();
+  return out || "<p></p>";
+}
+
+/* ---------------------------------------------------------------- state */
+
+const S = { findings: null, rules: null, alerts: null, filter: "all", by: {} };
+
+const host = (url) => { try { return new URL(url).hostname.replace(/^www\./, ""); } catch { return ""; } };
+
+/** The rule record behind a finding, joined on the vault path. */
+const meta = (path) => S.by[path] || {};
+
+/** How a finding's own figure should read. Every branch quotes a payload field. */
+function figureOf(f) {
+  const a = f.affected[0] || {};
+  if (a.annual_gap) return [money(a.annual_gap), "a year · from your payroll"];
+  if (f.bites === "forecast") return [money(a.value), "of " + money(f.threshold_after)];
+  if (f.bites === "above") return [money(f.threshold_before) + " → " + money(f.threshold_after), "the move · priced in the note"];
+  return ["in its cost note", "not arithmetic from the vault"];
+}
+
+const whenOf = (f) => f.days_until === null ? "standing"
+  : (f.days_until < 0 ? "−" : "+") + Math.abs(f.days_until) + "d";
+
+const CLOCK = { law: "Law moved", growth: "You grew", recurring: "Date arriving" };
+
+/* ---------------------------------------------------------------- masthead */
+
+function renderHead() {
+  const f = S.findings;
+  $("co").textContent = f.company || "";
+  const inForce = f.rules.filter((r) => r.in_force);
+  const gaps = f.rules.flatMap((r) => r.affected).filter((a) => a.annual_gap);
+
+  const who = gaps.map((a) => a.who);
+  const lands = (f.rules.find((r) => r.affected.some((a) => a.annual_gap)) || {}).lands;
+  let lede = "";
+  if (who.length) {
+    lede = who.join(" and ") + " are " + '<span class="m" style="font-size:.86em;letter-spacing:-.01em">'
+      + money(f.annual_gap_total) + "</span> a year under salary floors that land on " + esc(day(lands));
+  }
+  if (inForce.length) {
+    const r = inForce[0];
+    lede += (lede ? ", and " : "") + esc(r.affected[0].who)
+      + " has been over the old " + esc(money(r.threshold_before))
+      + ' ceiling for <span style="color:var(--spot-ink)">' + Math.abs(r.days_until) + " days</span>";
+  }
+  $("lede").innerHTML = (lede || "Nothing in the vault is exposed today") + ".";
+
+  $("sub").innerHTML = "Every figure on this page was copied off a "
+    + '<span class="m" style="font-size:.9em">.gov.sg</span> page. '
+    + gaps.length + " of the " + f.parties + " findings price themselves from your own payroll; the other "
+    + f.priced_in_prose + " are priced in the human-written cost note on their rule, quoted rather than paraphrased.";
+}
+
+/* ---------------------------------------------------------------- banner */
+
+function renderBanner() {
+  const f = S.findings.rules.find((r) => r.in_force);
+  if (!f) { $("banner").innerHTML = ""; return; }
+  const m = meta(f.path), a = f.affected[0] || {};
+  const [fig, note] = figureOf(f);
+  $("banner").innerHTML = `
+    <div class="banner">
+      <div style="display:flex;flex-wrap:wrap;gap:12px 24px;align-items:baseline">
+        <div class="m" style="font-size:12px;letter-spacing:.2em;color:var(--spot-ink);text-transform:uppercase">Already in force &middot; unbudgeted</div>
+        <div class="m" style="font-size:12px;letter-spacing:.08em;color:var(--spot-deep)">EFFECTIVE ${esc(day(f.lands))} &middot; ${Math.abs(f.days_until)} DAYS AGO</div>
+      </div>
+      <div class="banner-grid">
+        <div>
+          <div class="banner-claim">${esc(f.title)}, and the payroll was never adjusted.</div>
+          <p class="sub" style="margin-top:22px;font-size:18px">${esc(a.who)} is at ${esc(money(a.value))} ${esc(f.unit === "SGD_per_month" ? "a month" : "")}, over the old ${esc(money(f.threshold_before))}. No calendar app can show this: the date is in the past.</p>
+          <div class="m" style="margin-top:28px;font-size:12.5px;color:var(--ink);line-height:1.9">DO THIS NEXT &nbsp;&rarr;&nbsp; ${esc(plain(m.next_step || "").split(". ")[0])}.</div>
+        </div>
+        <div style="text-align:right">
+          <div class="m banner-fig" style="font-size:${figSize(fig, "clamp(28px,3.4vw,46px)", "clamp(21px,2.3vw,30px)")}">${esc(fig)}</div>
+          <div class="m" style="font-size:11.5px;letter-spacing:.14em;color:var(--spot-deep);margin-top:10px;text-transform:uppercase">${esc(note)}</div>
+          <div style="font-size:16.5px;line-height:1.6;color:var(--muted);margin-top:20px;font-style:italic">Priced in the rule&rsquo;s own cost note. Ante does not derive a rate it cannot read off the page.</div>
+          <div class="m" style="margin-top:18px;font-size:12px"><a href="${esc(f.resource)}" target="_blank" rel="noopener">${esc(host(f.resource))} &#8599;</a></div>
+        </div>
+      </div>
+    </div>`;
+}
+
+/* ---------------------------------------------------------------- timeline */
+
+const PX_PER_DAY = 2;
+
+function renderTimeline() {
+  const dated = S.findings.rules.filter((r) => r.days_until !== null);
+  const standing = S.findings.rules.filter((r) => r.days_until === null);
+  const el = $("tl");
+  if (!dated.length) { el.innerHTML = ""; return; }
+
+  // one group per landing day, so three rules on 1 January read as one event
+  const days = [...new Set(dated.map((r) => r.days_until))].sort((a, b) => a - b);
+  const first = days[0];
+  const y = (d) => (d - first) * PX_PER_DAY;          // 0 at the earliest rule
+  const todayY = y(0);
+  const ROW = 92;
+
+  let html = "";
+  html += `<div class="tl-past" style="height:${todayY + 28}px"></div>`;
+  html += `<div class="tl-axis hot" style="top:0;height:${todayY}px"></div>`;
+
+  let bottom = todayY;
+  for (const d of days) {
+    const group = dated.filter((r) => r.days_until === d);
+    const top = y(d);
+    const past = d < 0;
+    const ink = past ? "var(--spot-ink)" : d === 0 ? "var(--ink)" : "var(--ink)";
+    const rows = group.map((f) => {
+      const a = f.affected[0] || {};
+      const [fig, note] = figureOf(f);
+      const detail = a.annual_gap
+        ? `${a.who} · ${money(a.value)}/mo vs ${money(f.threshold_after)} floor`
+        : `${a.who} · ${typeof a.value === "number" ? money(a.value) : a.value}`;
+      return `<div class="tl-row">
+          <div style="flex:1 1 300px;min-width:0">
+            <div style="font-size:20px;line-height:1.36;max-width:44ch;text-wrap:pretty">${esc(f.title)}</div>
+            <div class="m" style="font-size:11.5px;color:var(--muted);margin-top:8px">${esc(detail)}</div>
+          </div>
+          <div style="flex:0 0 auto;width:170px;text-align:right;margin-left:auto">
+            <div class="m" style="font-size:${figSize(fig, "19px", "14px")};color:${past ? "var(--spot-ink)" : "var(--ink)"}">${esc(fig)}</div>
+            <div class="m" style="font-size:10px;letter-spacing:.12em;color:var(--faint);margin-top:6px;text-transform:uppercase">${esc(note)}</div>
+          </div>
+        </div>`;
+    }).join("");
+
+    html += `<div class="tl-group" style="top:${top}px">
+        <div class="tl-when">
+          <div class="m" style="font-size:14px;color:${ink}">${esc(whenOf(group[0]))}${group.length > 1 ? " ×" + group.length : ""}</div>
+          <div class="m" style="font-size:10.5px;letter-spacing:.12em;color:var(--faint);margin-top:5px">${esc(day(group[0].lands))}</div>
+        </div>
+        <div class="tl-dot" style="background:${past ? "var(--spot-ink)" : "var(--ink)"};${group.length > 1 ? "width:15px;height:15px" : ""}"></div>
+        <div class="tl-rows">${rows}</div>
+      </div>`;
+    bottom = Math.max(bottom, top + group.length * ROW);
+  }
+
+  html += `<div class="tl-axis" style="top:${todayY}px;height:${bottom - todayY}px"></div>`;
+  html += `<div class="tl-today" style="top:${todayY}px">
+      <div class="bar"></div>
+      <div class="m" style="font-size:11px;letter-spacing:.2em;text-transform:uppercase;padding-top:10px">Today &middot; ${esc(S.findings.as_of)}</div>
+    </div>`;
+  el.innerHTML = html;
+  el.style.height = (bottom + 40) + "px";
+
+  const inForce = dated.filter((r) => r.in_force).length;
+  const together = Math.max(...days.map((d) => dated.filter((r) => r.days_until === d).length));
+  $("tl-note").textContent = inForce
+    ? `Everything above the today line is already in force. ${together} rules land together on the same day.`
+    : `${together} rules land together on the same day.`;
+  $("tl-standing").innerHTML = standing.length
+    ? standing.length + " rule" + (standing.length > 1 ? "s have" : " has") + " no date at all and so cannot be drawn here: "
+      + standing.map((r) => esc(r.title)).join("; ") + ". A threshold you grow into has nothing to put in a diary."
+    : "";
+}
+
+/* ---------------------------------------------------------------- findings */
+
+/** Four provenance steps, each read off a payload rather than asserted. */
+function chain(f) {
+  const m = meta(f.path);
+  const fr = m.freshness || {};
+  const alert = (S.alerts.alerts || []).find((a) => a.rule === f.path);
+  const out = [];
+  out.push([true, "Figure printed on " + host(f.resource)]);
+  out.push([!m.overdue_human_review,
+    fr.verified && fr.verified.on
+      ? "Read by a person " + day(fr.verified.on) + " (" + fr.verified.days + "d ago)"
+      : "Never read by a person"]);
+  if (alert) {
+    out.push([false, "Machine re-read " + day(fr.checked && fr.checked.on) + ", could not confirm: " + plain(alert.drift || "")]);
+    out.push([false, "Escalated to a human " + day(alert.raised) + ", " + plain(alert.status || "")]);
+  } else {
+    out.push([true, "Machine re-read " + day(fr.checked && fr.checked.on) + ", unchanged, 0 tokens"]);
+    const a = f.affected[0] || {};
+    out.push([!!a.annual_gap, a.annual_gap
+      ? "Gap is arithmetic over two figures the vault already holds"
+      : "No annual gap derived: this one is priced in its own cost note"]);
+  }
+  return out;
+}
+
+function renderFindings() {
+  const all = S.findings.rules;
+  const pass = (r) => S.filter === "all" ? true
+    : S.filter === "force" ? r.in_force : r.clock === S.filter;
+  const list = all.filter(pass);
+
+  const counts = {
+    all: all.length,
+    law: all.filter((r) => r.clock === "law").length,
+    growth: all.filter((r) => r.clock === "growth").length,
+    recurring: all.filter((r) => r.clock === "recurring").length,
+    force: all.filter((r) => r.in_force).length,
+  };
+  $("find-h").textContent = all.length + " findings, ranked by when they bite";
+  $("filters").innerHTML = [["all", "All"], ["law", "Law moved"], ["growth", "You grew"],
+    ["recurring", "Date arriving"], ["force", "In force"]]
+    .map(([id, label]) => `<button class="chip" data-f="${id}" aria-pressed="${S.filter === id}">${label} ${counts[id]}</button>`)
+    .join("");
+
+  $("findings").innerHTML = list.map((f) => {
+    const m = meta(f.path);
+    const [fig, note] = figureOf(f);
+    const fr = (m.freshness || {}).verified || {};
+    const affected = f.affected.map((a) => {
+      const detail = a.annual_gap
+        ? money(a.value) + "/mo vs " + money(f.threshold_after) + " floor · " + money(a.annual_gap) + "/yr short"
+        : (typeof a.value === "number" ? money(a.value) : a.value)
+          + (a.age_band_on ? " · band " + a.age_band_on : "");
+      return `<div style="display:flex;flex-wrap:wrap;gap:6px 18px;align-items:baseline;margin-top:12px;padding-bottom:12px;border-bottom:1px solid var(--hair)">
+          <span style="font-size:18px">${esc(a.who)}</span>
+          <span class="m" style="font-size:13.5px;color:var(--muted);margin-left:auto">${esc(detail)}</span>
+        </div>`;
+    }).join("");
+
+    const links = chain(f).map(([ok, text]) => `<div style="display:flex;gap:10px;align-items:baseline;margin-top:12px">
+        <span class="m" style="font-size:11px;color:${ok ? "var(--ink)" : "var(--spot-ink)"}">${ok ? "✓" : "✗"}</span>
+        <span style="font-size:15px;line-height:1.5;color:${ok ? "var(--ink)" : "var(--spot-ink)"}">${esc(text)}</span>
+      </div>`).join("");
+
+    return `<details class="find" data-slug="${esc(m.slug || "")}">
+      <summary>
+        <div>
+          <div class="m" style="font-size:14px;color:${f.in_force ? "var(--spot-ink)" : f.days_until === null ? "var(--faint)" : "var(--ink)"}">${esc(whenOf(f))}</div>
+          <div class="m" style="font-size:10.5px;letter-spacing:.14em;color:var(--faint);margin-top:5px;text-transform:uppercase">${esc(CLOCK[f.clock] || f.clock)}</div>
+        </div>
+        <div>
+          <div class="find-title">${esc(f.title)}</div>
+          <div style="font-size:17px;line-height:1.58;color:var(--muted);margin-top:9px;max-width:60ch;text-wrap:pretty">${esc(consequence(f))}</div>
+          <div class="m" style="font-size:12px;color:var(--link);margin-top:12px">${esc(host(f.resource))} &middot; read by a person ${fr.days != null ? fr.days + " days ago" : "never"}</div>
+        </div>
+        <div style="text-align:right">
+          <div class="m" style="font-size:${figSize(fig, "22px", "15px")};color:${f.in_force ? "var(--spot-ink)" : /^S\$/.test(fig) ? "var(--ink)" : "var(--faint)"};line-height:1.2">${esc(fig)}</div>
+          <div class="m" style="font-size:10.5px;letter-spacing:.12em;color:var(--faint);margin-top:7px;text-transform:uppercase">${esc(note)}</div>
+        </div>
+      </summary>
+      <div class="find-body">
+        <div></div>
+        <div>
+          <div class="eyebrow">Who it hits, from your own roster</div>
+          ${affected}
+          <div class="eyebrow" style="margin-top:34px">Cost, written by a human, quoted verbatim</div>
+          <div class="prose" style="margin-top:12px;max-width:62ch">${prose(m.cost)}</div>
+          <div class="eyebrow" style="margin-top:34px">Next step, quoted, never invented</div>
+          <div class="prose" style="margin-top:12px;max-width:62ch">${prose(m.next_step)}</div>
+          <div style="display:flex;flex-wrap:wrap;gap:10px;margin-top:32px">
+            <button class="btn" data-open="${esc(m.slug || "")}">Read the full note</button>
+            <button class="btn-o" data-copy="${esc(m.slug || "")}">Copy to your accountant</button>
+          </div>
+        </div>
+        <div>
+          <div class="eyebrow">Provenance</div>
+          ${links}
+        </div>
+      </div>
+    </details>`;
+  }).join("");
+
+  const gaps = all.flatMap((r) => r.affected).filter((a) => a.annual_gap).length;
+  $("ledger").textContent = S.filter === "all"
+    ? `${gaps} of the ${S.findings.parties} price themselves from your payroll arithmetic, `
+      + `${money(S.findings.annual_gap_total)} a year between them. The other ${S.findings.priced_in_prose} `
+      + `are priced in the human-written cost note on each rule, which Ante quotes rather than paraphrases. `
+      + `Half a bill that is provable beats a whole one that is not.`
+    : `Filtered view: ${list.length} of ${all.length} findings. Clear the filter to see the whole bill.`;
+}
+
+/** One line of consequence, composed only from fields the API returned. */
+function consequence(f) {
+  const a = f.affected[0] || {};
+  const m = meta(f.path);
+  if (f.in_force) {
+    return `In force since ${day(f.lands)}. ${a.who} is at ${money(a.value)} against the old `
+      + `${money(f.threshold_before)}, and has been for ${Math.abs(f.days_until)} days.`;
+  }
+  if (a.annual_gap) {
+    // every figure here is a field the API returned. The monthly shortfall is
+    // NOT printed: it would be a subtraction done in the browser, and the whole
+    // claim of this board is that it does no arithmetic of its own.
+    return `${a.who} is paid ${money(a.value)} against the ${money(f.threshold_after)} floor `
+      + `that lands on ${day(f.lands)} — ${money(a.annual_gap)} a year short.`;
+  }
+  if (f.bites === "forecast") {
+    return `${a.who} runs at ${money(a.value)} against a ${money(f.threshold_after)} threshold. `
+      + `The obligation begins on the forecast, not on the crossing.`;
+  }
+  if (f.bites === "band") {
+    return `${a.who} sits in the ${a.value} band, which the rule moves on ${day(f.lands)}. `
+      + `Priced in the note, not derived here.`;
+  }
+  return `Falls due ${day(f.lands)}, counted from your own financial year end of ${a.value}.`;
+}
+
+/* ------------------------------------------------- what the curator did */
+
+function renderCurator() {
+  const alerts = S.alerts.alerts || [];
+  const refusal = alerts.find((a) => a.status === "needs_human_check") || alerts[0];
+  const el = $("curator");
+
+  // The design shows a rewritten figure. There is no applied change in this
+  // vault, and inventing one would be exactly the lie the product exists to
+  // refuse -- so the real refusal takes the slot instead.
+  if (!refusal) {
+    el.innerHTML = `<h2 style="font-size:26px;letter-spacing:-.01em">What the curator did this morning</h2>
+      <p class="sub">The sweep was clean: every source still says what the vault says, nothing was
+      rewritten, and no alert was raised. A quiet day costs zero tokens.</p>`;
+    return;
+  }
+  const m = S.rules.rules.find((r) => r.path === refusal.rule) || {};
+  el.innerHTML = `
+    <h2 style="font-size:26px;letter-spacing:-.01em">What Ante refused to write</h2>
+    <p class="sub">Nobody started this. It re-read the source, could not prove the figure was
+      printed there, and stopped rather than guess. The rule note is byte-identical.</p>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:0;margin-top:44px;border-top:1px solid var(--ink)">
+      <div style="padding:26px 32px 30px 0;border-right:1px solid var(--rule)">
+        <div class="eyebrow">The rule it was checking</div>
+        <div style="font-size:20px;line-height:1.34;margin-top:14px;max-width:34ch">${esc(m.title || refusal.rule)}</div>
+        <div class="m" style="font-size:12px;color:var(--faint);margin-top:14px">${esc(refusal.rule)}</div>
+      </div>
+      <div style="padding:26px 0 30px 32px">
+        <div class="eyebrow dead">Verdict, ${esc(refusal.raised)}</div>
+        <div class="m" style="font-size:30px;color:var(--spot-ink);margin-top:14px">${esc(plain(refusal.drift || "refused"))}</div>
+        <div class="note" style="margin-top:14px">Status: ${esc(plain(refusal.status || ""))}. The figure on the
+          board is still the one a person read on ${esc(day(((m.freshness || {}).verified || {}).on))}.</div>
+      </div>
+    </div>
+    <div class="quote">
+      <div class="eyebrow">What happened, from the alert note</div>
+      <div class="prose" style="margin-top:14px;max-width:66ch">${prose(refusal.what_happened)}</div>
+      <div class="eyebrow" style="margin-top:26px">Next step</div>
+      <div class="prose" style="margin-top:12px;max-width:66ch">${prose(refusal.next_step)}</div>
+    </div>`;
+}
+
+/* ---------------------------------------------------------------- drawer */
+
+async function openRule(slug) {
+  if (!slug) return;
+  const d = $("drawer");
+  d.innerHTML = `<div class="scrim" data-close="1"></div><div class="drawer"><div style="padding:40px clamp(20px,4vw,56px) 96px">Loading&hellip;</div></div>`;
+  let r;
+  try {
+    r = await (await fetch(API + "/api/rule/" + encodeURIComponent(slug))).json();
+  } catch {
+    d.querySelector(".drawer").innerHTML = `<div style="padding:40px">Could not read that note.</div>`;
+    return;
+  }
+  d.querySelector(".drawer").innerHTML = `
+    <div style="padding:40px clamp(20px,4vw,56px) 96px">
+      <div style="display:flex;gap:20px;align-items:baseline">
+        <div class="m kicker">${esc(r.path)}</div>
+        <button class="chip" data-close="1" style="margin-left:auto">CLOSE</button>
+      </div>
+      <h3 style="margin-top:22px;font-size:30px;line-height:1.24;letter-spacing:-.01em;text-wrap:pretty">${esc(r.title)}</h3>
+      <div style="margin-top:28px;border-top:1px solid var(--ink)">
+        ${r.frontmatter.map(([k, v]) => `<div class="fm m">
+            <span style="color:var(--faint)">${esc(k)}</span>
+            <span style="color:${k === "verified" ? "var(--link)" : "var(--ink)"}">${esc(v)}</span>
+          </div>`).join("")}
+      </div>
+      ${r.sections.map(([h, body]) => `<div style="margin-top:38px">
+          <div class="eyebrow">${esc(h)}</div>
+          <div class="prose" style="margin-top:12px">${prose(body)}</div>
+        </div>`).join("")}
+      <div style="margin-top:44px;padding-top:22px;border-top:1px solid var(--rule)" class="m">
+        <a href="${esc(r.resource)}" target="_blank" rel="noopener">${esc(r.resource)}</a>
+      </div>
+    </div>`;
+}
+
+/* ---------------------------------------------------------------- ask */
+
+const SUGGESTIONS = [
+  "what changes for us in the next 90 days?",
+  "which of my staff are affected, and by how much?",
+  "what has Ante refused to write, and why?",
+];
+
+async function ask() {
+  const q = $("q").value.trim();
+  if (!q) return;
+  const out = $("answer");
+  $("ask").disabled = true;
+  out.innerHTML = `<p class="sub" style="margin:0">Thinking. This one costs tokens; the board above did not&hellip;</p>`;
+  try {
+    const res = await fetch(API + "/api/ask", {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({ question: q }),
+    });
+    const body = await res.json();
+    if (!res.ok) {
+      out.innerHTML = `<p class="sub" style="margin:0"><span class="dead">Commentary unavailable</span> &mdash;
+        ${esc(body.detail || res.status)}. Every figure above is still correct: it is arithmetic over the
+        vault and needs no model.</p>`;
+      return;
+    }
+    out.innerHTML = `<div class="prose">${prose(body.answer)}</div>
+      <div class="m" style="font-size:11.5px;letter-spacing:.06em;color:var(--faint);padding-top:18px;margin-top:18px;border-top:1px solid var(--rule);line-height:1.9">${esc(body.report || "")}</div>`;
+  } catch (e) {
+    out.innerHTML = `<p class="sub" style="margin:0"><span class="dead">The API is not reachable.</span> ${esc(e.message)}</p>`;
+  } finally {
+    $("ask").disabled = false;
+  }
+}
+
+/* ---------------------------------------------------------------- brief */
+
+async function sendBrief() {
+  const b = $("brief"), out = $("brief-out");
+  b.disabled = true;
+  out.innerHTML = `<p class="sub" style="margin:0">Sweeping six government sources, then rendering the brief. About 30 seconds&hellip;</p>`;
+  try {
+    const res = await fetch(API + "/api/brief?force=true", { method: "POST" });
+    const r = await res.json();
+    if (r.sent) {
+      out.innerHTML = `<div style="border-top:3px solid var(--ink);padding-top:20px">
+        <div class="eyebrow">Sent</div>
+        <div style="font-size:24px;margin-top:10px">${esc(r.sent)}</div>
+        <div class="note" style="margin-top:10px">${esc(r.findings)} findings. Check the inbox.</div></div>`;
+    } else if (r.outbox) {
+      out.innerHTML = `<div style="border-top:3px solid var(--spot);padding-top:20px">
+        <div class="eyebrow dead">Not sent &mdash; written to the outbox instead</div>
+        <div class="m" style="font-size:14px;margin-top:10px">${esc(r.outbox)}</div>
+        <div class="note" style="margin-top:10px">${esc(r.why || "")}. The brief was still rendered in full:
+          an unreachable mail server must not lose it. Set SMTP_HOST, SMTP_USER and SMTP_PASS in
+          <span class="m">env/.env</span> to deliver it.</div></div>`;
+    } else {
+      out.innerHTML = `<div style="border-top:3px solid var(--spot);padding-top:20px">
+        <div class="eyebrow dead">${esc(r.error ? "Not sent" : "Nothing to send")}</div>
+        <div class="note" style="margin-top:10px">${esc(r.error || "Nothing has changed since the last brief.")}</div></div>`;
+    }
+  } catch (e) {
+    out.innerHTML = `<p class="sub" style="margin:0"><span class="dead">The API is not reachable.</span> ${esc(e.message)}</p>`;
+  } finally {
+    b.disabled = false;
+  }
+}
+
+/* ---------------------------------------------------------------- boot */
+
+function wire() {
+  document.addEventListener("click", (e) => {
+    const f = e.target.closest("[data-f]");
+    if (f) { S.filter = f.dataset.f; renderFindings(); return; }
+    const o = e.target.closest("[data-open]");
+    if (o) { openRule(o.dataset.open); return; }
+    const c = e.target.closest("[data-copy]");
+    if (c) { copyOut(c.dataset.copy, c); return; }
+    if (e.target.closest("[data-close]")) { $("drawer").innerHTML = ""; }
+  });
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") $("drawer").innerHTML = "";
+  });
+  $("ask").addEventListener("click", ask);
+  $("q").addEventListener("keydown", (e) => { if (e.key === "Enter") ask(); });
+  $("brief").addEventListener("click", sendBrief);
+  $("suggest").innerHTML = SUGGESTIONS.map((s) =>
+    `<button class="chip" style="text-transform:none;letter-spacing:0;font-size:14.5px" data-s="${esc(s)}">${esc(s)}</button>`).join("");
+  $("suggest").addEventListener("click", (e) => {
+    const b = e.target.closest("[data-s]");
+    if (b) { $("q").value = b.dataset.s; ask(); }
+  });
+}
+
+function copyOut(slug, btn) {
+  const m = S.rules.rules.find((r) => r.slug === slug) || {};
+  const f = S.findings.rules.find((r) => r.path === m.path) || { affected: [] };
+  const text = [
+    m.title,
+    "Lands: " + (f.lands || "standing") + (f.in_force ? " (ALREADY IN FORCE)" : ""),
+    "Affected: " + f.affected.map((a) => a.who + ", " + a.value).join("; "),
+    "", "Cost:", plain(m.cost), "", "Next step:", plain(m.next_step), "", "Source: " + m.resource,
+  ].join("\n");
+  if (navigator.clipboard) navigator.clipboard.writeText(text).then(() => {
+    const was = btn.textContent;
+    btn.textContent = "Copied";
+    setTimeout(() => { btn.textContent = was; }, 1400);
+  }).catch(() => {});
+}
+
+async function boot() {
+  wire();
+  try {
+    const [findings, rules, alerts] = await Promise.all(
+      ["/api/findings", "/api/rules", "/api/alerts"].map((u) =>
+        fetch(API + u).then((r) => {
+          if (!r.ok) throw new Error(u + " -> " + r.status);
+          return r.json();
+        })));
+    S.findings = findings; S.rules = rules; S.alerts = alerts;
+    for (const r of rules.rules) S.by[r.path] = r;
+
+    renderHead(); renderBanner(); renderTimeline(); renderFindings(); renderCurator();
+  } catch (e) {
+    $("lede").innerHTML = "The API is not answering.";
+    $("sub").innerHTML = "Start it with <span class='m'>python run.py serve</span> and reload. "
+      + "<span class='dead'>" + esc(e.message) + "</span>";
+    return;
+  }
+
+  // after first paint: health is the only call that touches AWS
+  try {
+    const h = await (await fetch(API + "/api/health")).json();
+    $("co-meta").textContent = `${h.people} people · ${h.rules} rules · `
+      + (h.problems.length ? `${h.problems.length} vault problem${h.problems.length > 1 ? "s" : ""}` : "vault sound");
+    $("swept").textContent = h.last_sweep ? "SWEPT " + h.last_sweep.split(" ")[0] : "NEVER SWEPT";
+    $("brief-to").textContent = h.bedrock.alive
+      ? "Bedrock live · the brief will carry AI commentary"
+      : "Bedrock " + h.bedrock.detail + " · the brief still sends, figures only";
+  } catch { /* the board is already correct without it */ }
+}
+
+boot();
+</script>
+</body>
+</html>

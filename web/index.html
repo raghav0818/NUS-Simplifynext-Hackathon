@@ -1,0 +1,534 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ante · regulatory early warning for Singapore founders</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><text y='13' font-size='13'>&#9201;</text></svg>">
+<link rel="stylesheet" href="broadsheet.css">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+:root{
+  --paper:#f3f2f2; --ink:#201e1d; --muted:#605d5d; --faint:#7d7979;
+  --rule:#d7d3d3; --hair:#eae7e7; --panel:#eae9e9; --field:#f8f4f4;
+  --spot:#d6006c; --spot-ink:#aa0b56; --spot-deep:#79103d; --spot-bg:#fff1f4;
+  --link:#006786; --cyan:#0088b0;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--paper);color:var(--ink);
+  font-family:"Source Serif 4",Georgia,"Times New Roman",serif;-webkit-font-smoothing:antialiased}
+a{color:var(--link);text-decoration:none;border-bottom:1px solid #99e0ff}
+a:hover{color:#0a303e;border-bottom-color:var(--cyan)}
+input,select,button{font-family:inherit}
+:focus-visible{outline:2px solid var(--cyan);outline-offset:2px}
+h1,h2,h3{font-weight:400;margin:0}
+.m{font-family:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace}
+.wrap{max-width:1320px;padding:0 clamp(20px,5vw,96px) 0}
+
+.nav{display:flex;flex-wrap:wrap;gap:14px 40px;align-items:baseline;
+  padding:34px 0 16px;border-bottom:3px solid var(--ink)}
+.nav-thin{height:1px;background:var(--ink);margin-top:3px}
+.nav a{font-size:16.5px;border:none;color:var(--muted)}
+.nav a:hover{color:var(--ink)}
+.nav a.go{color:var(--link)}
+
+.hero{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));
+  gap:32px 72px;padding:clamp(48px,7vw,96px) 0 0;align-items:end}
+.hero h1{font-size:clamp(32px,4.4vw,62px);line-height:1.1;letter-spacing:-.02em;
+  max-width:19ch;text-wrap:pretty}
+.lead{margin:0;font-size:20px;line-height:1.6;color:var(--muted);max-width:46ch;text-wrap:pretty}
+
+.btn{display:inline-block;border:1px solid var(--ink);background:var(--ink);color:var(--paper);
+  border-radius:2px;padding:14px 26px;font-size:17px;cursor:pointer}
+.btn:hover{background:#444141;border-color:#444141;color:var(--paper)}
+.btn-o{display:inline-block;border:1px solid var(--ink);background:transparent;color:var(--ink);
+  border-radius:2px;padding:14px 26px;font-size:17px;cursor:pointer}
+.btn-o:hover{border-color:var(--cyan);color:var(--link)}
+a.btn,a.btn-o{border-bottom-width:1px}
+.btn:disabled{opacity:.45;cursor:default}
+
+.proof{display:flex;flex-wrap:wrap;gap:14px 56px;margin-top:52px;padding-top:20px;
+  border-top:1px solid var(--rule);font-size:11.5px;letter-spacing:.14em;
+  color:var(--faint);text-transform:uppercase}
+
+section{margin-top:clamp(64px,8vw,112px)}
+h2{font-size:clamp(24px,2.6vw,32px);letter-spacing:-.015em}
+.eyebrow{font-size:11px;letter-spacing:.16em;color:var(--spot-ink);text-transform:uppercase}
+
+.tab{cursor:pointer;border-radius:2px;padding:9px 18px;font-size:11px;letter-spacing:.14em;
+  text-transform:uppercase;background:transparent;color:var(--muted);border:1px solid var(--rule)}
+.tab:hover{border-color:var(--cyan)}
+.tab[aria-selected=true]{background:var(--ink);color:var(--paper);border-color:var(--ink)}
+
+.chrome{margin-top:22px;background:#faf9f9;box-shadow:0 14px 40px rgba(45,43,43,.14);
+  border:1px solid #e2dfdf}
+.chrome-bar{display:flex;gap:14px;align-items:center;padding:12px 18px;
+  border-bottom:1px solid #e2dfdf;background:var(--paper)}
+.dot{width:9px;height:9px;background:var(--rule)}
+.chrome-body{padding:clamp(20px,3.4vw,46px)}
+
+.row{display:flex;flex-wrap:wrap;gap:10px 32px;padding:22px 0;
+  border-top:1px solid var(--rule);align-items:baseline}
+.step{display:flex;flex-wrap:wrap;gap:16px 64px;padding:30px 0;
+  border-top:1px solid var(--rule);align-items:baseline}
+
+.field{margin-bottom:24px}
+.field label{display:block;font-size:10.5px;letter-spacing:.16em;color:var(--faint);
+  text-transform:uppercase;font-family:"IBM Plex Mono",ui-monospace,monospace}
+.field input,.field select{width:100%;margin-top:9px;font-size:18px;padding:12px 14px;
+  border:1px solid var(--rule);border-radius:2px;background:var(--field);color:var(--ink)}
+.field .help{font-size:15px;color:var(--faint);margin-top:7px;line-height:1.5}
+.drop{border:1px dashed #bab6b6;padding:44px 28px;text-align:center;background:#f8f4f4}
+.drop.on{border-color:var(--cyan);background:#eef8fb}
+
+.foot{margin-top:clamp(64px,8vw,110px);padding:28px 0 80px;border-top:1px solid var(--rule);
+  font-size:11.5px;letter-spacing:.1em;color:var(--faint);text-transform:uppercase}
+@media (max-width:760px){ .nav{gap:10px 20px} .nav .links{margin-left:0!important} }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <nav class="nav">
+    <div style="font-size:20px;letter-spacing:.02em">Ante</div>
+    <div class="links" style="display:flex;flex-wrap:wrap;gap:10px 26px;margin-left:auto;align-items:baseline">
+      <a href="#product">The product</a>
+      <a href="#how">How it works</a>
+      <a href="#watch">What it watches</a>
+      <a href="board.html">Open a live board &#8599;</a>
+      <a href="#start" class="go">Start a vault &darr;</a>
+    </div>
+  </nav>
+  <div class="nav-thin"></div>
+
+  <div class="hero">
+    <h1>Singapore moves the rules on startups and SMEs. Nobody writes to tell you.</h1>
+    <div>
+      <p class="lead">Ante re-reads the <span class="m" style="font-size:.9em">.gov.sg</span> pages
+        every morning, checks them against your own payroll, and shows you what is already costing
+        money, what lands next, and where each figure was printed.</p>
+      <div style="display:flex;flex-wrap:wrap;gap:12px;margin-top:30px">
+        <a href="#start" class="btn">Start a vault</a>
+        <a href="#product" class="btn-o">See what it finds</a>
+      </div>
+    </div>
+  </div>
+
+  <div class="proof m" id="proof">
+    <div>Local-first &middot; your payroll never leaves the machine</div>
+    <div>Every figure quoted from a government page</div>
+    <div>Two model calls in the whole system</div>
+  </div>
+
+  <section id="product">
+    <h2>This is the whole product</h2>
+    <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:28px" role="tablist" id="tabs">
+      <button class="tab" role="tab" data-t="board" aria-selected="true">The board</button>
+      <button class="tab" role="tab" data-t="note" aria-selected="false">A rule note</button>
+      <button class="tab" role="tab" data-t="refusal" aria-selected="false">What it refused</button>
+    </div>
+
+    <div class="chrome">
+      <div class="chrome-bar">
+        <div style="display:flex;gap:6px"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
+        <div class="m" style="font-size:11px;letter-spacing:.1em;color:var(--faint)" id="chrome-label"></div>
+      </div>
+      <div class="chrome-body" id="pane"></div>
+    </div>
+    <div class="m" style="font-size:12px;color:var(--faint);margin-top:12px" id="pane-note"></div>
+
+    <div style="margin-top:18px">
+      <a href="board.html" class="btn-o">Open a live board &#8599;</a>
+    </div>
+  </section>
+
+  <section>
+    <h2 style="max-width:24ch">A calendar reminder cannot catch any of this</h2>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:44px 64px;margin-top:44px">
+      <div>
+        <div class="eyebrow">The date is in the past</div>
+        <div style="font-size:21px;line-height:1.36;margin-top:14px;max-width:24ch;text-wrap:pretty">You cannot set a reminder for something that already happened</div>
+        <p style="margin:14px 0 0;font-size:17.5px;line-height:1.62;color:var(--muted);max-width:38ch;text-wrap:pretty">
+          The CPF ceiling moved on 1 January 2026. A calendar entry would have fired months ago,
+          assuming somebody knew to write it. Ante reads today&rsquo;s payroll against today&rsquo;s law,
+          so a rule that started biting last year still shows up first.</p>
+      </div>
+      <div>
+        <div class="eyebrow">There is no date</div>
+        <div style="font-size:21px;line-height:1.36;margin-top:14px;max-width:24ch;text-wrap:pretty">Some obligations are a line you cross, not a day that arrives</div>
+        <p style="margin:14px 0 0;font-size:17.5px;line-height:1.62;color:var(--muted);max-width:38ch;text-wrap:pretty">
+          GST registration triggers on turnover, not on a deadline. It has no date to put in a
+          diary. Ante watches the threshold against your own figures and tells you how close you are.</p>
+      </div>
+      <div>
+        <div class="eyebrow">The number moves</div>
+        <div style="font-size:21px;line-height:1.36;margin-top:14px;max-width:24ch;text-wrap:pretty">The figure you wrote down last quarter is not the figure today</div>
+        <p style="margin:14px 0 0;font-size:17.5px;line-height:1.62;color:var(--muted);max-width:38ch;text-wrap:pretty">
+          A threshold in the vault is a claim about a page. The curator re-reads that page every
+          morning and rewrites the rule only when it can quote the new figure off it.</p>
+      </div>
+    </div>
+  </section>
+
+  <section id="how">
+    <h2>Three steps, then it runs itself</h2>
+    <div style="margin-top:40px">
+      <div class="step">
+        <div style="flex:0 1 300px;display:flex;gap:20px;align-items:baseline">
+          <div class="m" style="font-size:13px;color:var(--faint)">01</div>
+          <div style="font-size:23px;line-height:1.3;letter-spacing:-.01em;max-width:18ch">Drop in a payroll CSV</div>
+        </div>
+        <p style="margin:0;flex:1 1 340px;min-width:0;font-size:18px;line-height:1.62;color:var(--muted);max-width:60ch;text-wrap:pretty">
+          Name, salary, pass type, date of birth, pass expiry. Column names are matched against an
+          alias table, never guessed by a model. Anything it cannot identify comes back as a
+          question against the row, because an unrecognised pass type moves money.</p>
+      </div>
+      <div class="step">
+        <div style="flex:0 1 300px;display:flex;gap:20px;align-items:baseline">
+          <div class="m" style="font-size:13px;color:var(--faint)">02</div>
+          <div style="font-size:23px;line-height:1.3;letter-spacing:-.01em;max-width:18ch">The curator reads the sources</div>
+        </div>
+        <p style="margin:0;flex:1 1 340px;min-width:0;font-size:18px;line-height:1.62;color:var(--muted);max-width:60ch;text-wrap:pretty">
+          Every morning it re-fetches the government pages behind each rule, compares them to what
+          the vault says, and rewrites a rule only when it can quote the new figure verbatim from
+          the page it says it read. When it cannot, it escalates to a person instead of guessing.</p>
+      </div>
+      <div class="step">
+        <div style="flex:0 1 300px;display:flex;gap:20px;align-items:baseline">
+          <div class="m" style="font-size:13px;color:var(--faint)">03</div>
+          <div style="font-size:23px;line-height:1.3;letter-spacing:-.01em;max-width:18ch">The board ranks what bites</div>
+        </div>
+        <p style="margin:0;flex:1 1 340px;min-width:0;font-size:18px;line-height:1.62;color:var(--muted);max-width:60ch;text-wrap:pretty">
+          Findings are ordered by when they hit you, not by category. Each one carries who it
+          affects from your own roster, what it costs in a human-written note, and the next step to
+          take. Ask Ante is there for the drill-down, but the answer is already on the page.</p>
+      </div>
+    </div>
+  </section>
+
+  <section id="watch">
+    <div style="display:flex;flex-wrap:wrap;gap:12px 32px;align-items:baseline">
+      <h2>What it watches today</h2>
+      <div class="m" style="font-size:11.5px;letter-spacing:.14em;color:var(--faint);text-transform:uppercase" id="watch-note"></div>
+    </div>
+    <div style="margin-top:34px" id="watch-list"></div>
+  </section>
+
+  <section id="start" style="padding-top:clamp(36px,5vw,64px);border-top:3px solid var(--ink)">
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:28px 72px;align-items:end">
+      <h2 style="font-size:clamp(26px,3.2vw,44px);line-height:1.16;letter-spacing:-.02em;max-width:17ch;text-wrap:pretty">
+        Point it at your payroll and find out what you already owe.</h2>
+      <p style="margin:0;font-size:18.5px;line-height:1.62;color:var(--muted);max-width:44ch;text-wrap:pretty">
+        A payroll CSV and four answers. The vault stays on your machine, and every rule it uses is a
+        plain text file you can read.</p>
+    </div>
+
+    <form id="vault-form" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:48px 72px;margin-top:48px">
+      <div>
+        <label class="drop" id="drop" for="payroll" style="display:block;cursor:pointer">
+          <div class="m" style="font-size:13px;letter-spacing:.1em;color:var(--muted)" id="drop-label">DROP PAYROLL.CSV HERE</div>
+          <div style="font-size:16.5px;color:var(--faint);margin-top:12px;line-height:1.55;max-width:38ch;margin-inline:auto;text-wrap:pretty">
+            Name, salary, pass type, date of birth, pass expiry. Column names are matched by an
+            alias table, never by a model.</div>
+        </label>
+        <input type="file" id="payroll" name="payroll" accept=".csv,text/csv" required
+               style="position:absolute;width:1px;height:1px;opacity:0">
+        <div style="margin-top:24px;font-size:16.5px;line-height:1.6;color:var(--muted);max-width:48ch;text-wrap:pretty">
+          Two things it refuses to guess, because both move money: an unrecognised pass type, and an
+          unreadable financial year end. Both come back reported against the row.</div>
+      </div>
+
+      <div>
+        <div class="field">
+          <label for="company_name">Company</label>
+          <input id="company_name" name="company_name" required placeholder="Registered name">
+          <div class="help">Written to company/profile.md. Human-owned from then on.</div>
+        </div>
+        <div class="field">
+          <label for="uen">UEN</label>
+          <input id="uen" name="uen" required placeholder="202318472K">
+        </div>
+        <div class="field">
+          <label for="financial_year_end">Financial year end</label>
+          <input id="financial_year_end" name="financial_year_end" required placeholder="12-31">
+          <div class="help">Refused if unreadable. The wrong FYE moves the ACRA deadline by months.</div>
+        </div>
+        <div class="field">
+          <label for="annual_revenue_run_rate">Annual revenue run-rate</label>
+          <input id="annual_revenue_run_rate" name="annual_revenue_run_rate" required
+                 inputmode="numeric" placeholder="862000">
+          <div class="help">Judges the GST threshold on forecast, not on the crossing.</div>
+        </div>
+        <div class="field">
+          <label for="founder_email">Where the brief goes</label>
+          <input id="founder_email" name="founder_email" type="email" required placeholder="you@company.example">
+          <div class="help">One email a morning, and only when something moved.</div>
+        </div>
+        <div id="mapping"></div>
+        <button class="btn" id="build" type="submit">Build the vault</button>
+        <div id="build-out" style="margin-top:22px"></div>
+      </div>
+    </form>
+  </section>
+
+  <div class="foot m">
+    Ante &middot; SimplifyNext IGNITE Agentic AI Hackathon 2026 &middot; all person records in the demo vault are synthetic
+  </div>
+</div>
+
+<script>
+"use strict";
+/* The landing page is authored copy: it stands on its own with no server. Three
+   regions upgrade themselves when the API is reachable -- the product viewer,
+   the watch list, and the vault form -- so what a visitor sees is the real
+   vault rather than a picture of one. */
+
+const API = location.protocol === "file:" ? "http://127.0.0.1:8000" : "";
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s ?? "").replace(/[&<>"]/g,
+  (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const plain = (s) => String(s ?? "")
+  .replace(/\[([^\]]+)\]\([^)]*\)/g, "$1").replace(/`([^`]+)`/g, "$1").replace(/\*\*([^*]+)\*\*/g, "$1");
+const money = (n) => "S$" + Number(n).toLocaleString("en-SG", { maximumFractionDigits: 0 });
+const host = (u) => { try { return new URL(u).hostname.replace(/^www\./, ""); } catch { return ""; } };
+const MONTHS = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+const day = (iso) => { const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(iso ?? ""));
+  return m ? `${+m[3]} ${MONTHS[+m[2] - 1]} ${m[1]}` : String(iso ?? ""); };
+
+const L = { findings: null, rules: null, alerts: null, tab: "board" };
+
+const CHROME = {
+  board:   ["ante · board", "Everything above the fold is already true; nothing was asked for."],
+  note:    ["ante · vault/rules/…", "Behind every row is a plain text file you can read, edit and put under version control."],
+  refusal: ["ante · alerts", "The curator escalates rather than guesses. This is the alert it wrote."],
+};
+
+/* ------------------------------------------------------- authored fallback */
+
+const STATIC_WATCH = [
+  ["CPF Ordinary Wage ceiling", "cpf.gov.sg", "Law moved"],
+  ["S Pass qualifying salary", "mom.gov.sg", "Law moved"],
+  ["Employment Pass qualifying salary and COMPASS", "mom.gov.sg", "Law moved"],
+  ["CPF senior worker contribution rates", "cpf.gov.sg", "Law moved"],
+  ["GST registration threshold", "iras.gov.sg", "You grew"],
+  ["ACRA annual return and AGM", "acra.gov.sg", "Date arriving"],
+];
+
+function watchRow(title, h, clock) {
+  return `<div class="row">
+      <div style="font-size:19px;flex:1 1 280px;min-width:0;text-wrap:pretty">${esc(title)}</div>
+      <div class="m" style="font-size:12px;color:var(--link);flex:0 0 auto;width:130px">${esc(h)}</div>
+      <div class="m" style="font-size:11.5px;letter-spacing:.1em;color:var(--faint);text-transform:uppercase;flex:0 0 auto;width:150px">${esc(clock)}</div>
+    </div>`;
+}
+
+function renderWatchStatic() {
+  $("watch-list").innerHTML = STATIC_WATCH.map((r) => watchRow(...r)).join("");
+  $("watch-note").textContent = "the rule base ships curated";
+}
+
+/* ----------------------------------------------------------- live upgrades */
+
+const CLOCK = { law: "Law moved", growth: "You grew", recurring: "Date arriving" };
+
+function renderWatchLive() {
+  const rs = L.rules.rules;
+  $("watch-list").innerHTML = rs.map((r) =>
+    watchRow(r.title, host(r.resource), CLOCK[r.clock] || r.clock)).join("");
+  const stale = rs.filter((r) => r.overdue_human_review).length;
+  $("watch-note").textContent = rs.length + " rules · "
+    + (stale ? stale + " overdue a human re-read" : "all read by a person within the year");
+}
+
+function paneBoard() {
+  const f = L.findings;
+  if (!f) return `<p style="margin:0;font-size:18px;color:var(--muted)">Start the API with
+    <span class="m">python run.py serve</span> to see a live vault here.</p>`;
+  const force = f.rules.find((r) => r.in_force);
+  const rows = f.rules.slice(0, 3).map((r) => {
+    const a = r.affected[0] || {};
+    const fig = a.annual_gap ? money(a.annual_gap)
+      : r.bites === "forecast" ? money(a.value) : "in its cost note";
+    return `<div class="row">
+        <div style="flex:0 0 auto;width:92px">
+          <div class="m" style="font-size:13.5px;color:${r.in_force ? "var(--spot-ink)" : "var(--ink)"}">${r.days_until === null ? "standing" : (r.days_until < 0 ? "−" : "+") + Math.abs(r.days_until) + "d"}</div>
+          <div class="m" style="font-size:10px;letter-spacing:.14em;color:var(--faint);margin-top:5px;text-transform:uppercase">${esc(CLOCK[r.clock] || r.clock)}</div>
+        </div>
+        <div style="flex:1 1 260px;min-width:0">
+          <div style="font-size:19.5px;line-height:1.34;max-width:46ch;text-wrap:pretty">${esc(r.title)}</div>
+          <div class="m" style="font-size:11.5px;color:var(--link);margin-top:9px">${esc(host(r.resource))}</div>
+        </div>
+        <div style="flex:0 0 auto;width:160px;margin-left:auto;text-align:right">
+          <div class="m" style="font-size:${/^S\$/.test(fig) ? "19px" : "13px"};color:${r.in_force ? "var(--spot-ink)" : "var(--ink)"}">${esc(fig)}</div>
+        </div>
+      </div>`;
+  }).join("");
+
+  const banner = force ? `<div style="background:var(--spot-bg);border-top:3px solid var(--spot);padding:26px clamp(16px,2.4vw,32px) 30px">
+      <div class="m" style="font-size:11px;letter-spacing:.2em;color:var(--spot-ink);text-transform:uppercase">Already in force · unbudgeted</div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:18px 48px;margin-top:20px;align-items:start">
+        <div style="font-size:clamp(19px,2vw,27px);line-height:1.26;max-width:34ch;text-wrap:pretty">${esc(force.title)}, and the payroll was never adjusted.</div>
+        <div style="text-align:right">
+          <div class="m" style="font-size:clamp(19px,2.2vw,28px);color:var(--spot-ink)">${esc(money(force.threshold_before))} &rarr; ${esc(money(force.threshold_after))}</div>
+          <div class="m" style="font-size:10.5px;letter-spacing:.14em;color:var(--spot-deep);margin-top:9px;text-transform:uppercase">effective ${esc(day(force.lands))}</div>
+        </div>
+      </div>
+    </div>` : "";
+
+  return banner + `<div style="margin-top:${force ? 34 : 0}px">${rows}
+    <div style="border-top:1px solid var(--rule);padding-top:18px;font-size:16px;color:var(--faint);font-style:italic">
+      ${f.rules.length - 3} more findings on the board, ranked by when they bite.</div></div>`;
+}
+
+async function paneNote() {
+  const r = L.rules && L.rules.rules[0];
+  if (!r) return `<p style="margin:0;font-size:18px;color:var(--muted)">No vault reachable.</p>`;
+  let note;
+  try { note = await (await fetch(API + "/api/rule/" + encodeURIComponent(r.slug))).json(); }
+  catch { return `<p style="margin:0;font-size:18px;color:var(--muted)">Could not read the note.</p>`; }
+  return `<div class="m" style="font-size:11px;letter-spacing:.14em;color:var(--faint);text-transform:uppercase">${esc(note.path)}</div>
+    <h3 style="margin-top:16px;font-size:clamp(21px,2.4vw,30px);line-height:1.24;letter-spacing:-.01em;max-width:30ch;text-wrap:pretty">${esc(note.title)}</h3>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:0 56px;margin-top:26px;border-top:1px solid var(--ink);padding-top:6px">
+      ${note.frontmatter.slice(0, 10).map(([k, v]) => `<div class="m" style="display:grid;grid-template-columns:150px minmax(0,1fr);gap:14px;padding:8px 0;border-bottom:1px solid var(--hair);font-size:12px">
+        <span style="color:var(--faint)">${esc(k)}</span><span>${esc(v)}</span></div>`).join("")}
+    </div>
+    ${note.sections.slice(1, 3).map(([h, body]) => `<div style="margin-top:30px;max-width:66ch">
+      <div class="m" style="font-size:10.5px;letter-spacing:.16em;color:var(--faint);text-transform:uppercase">${esc(h)}</div>
+      <p style="margin:12px 0 0;font-size:18px;line-height:1.66;text-wrap:pretty">${esc(plain(body).split("\n").join(" ").slice(0, 420))}…</p></div>`).join("")}`;
+}
+
+function paneRefusal() {
+  const a = L.alerts && (L.alerts.alerts || [])[0];
+  if (!a) return `<p style="margin:0;font-size:18px;color:var(--muted)">Nothing has been refused in this
+    vault yet. A clean sweep writes no alert.</p>`;
+  return `<div style="display:flex;flex-wrap:wrap;gap:10px 26px;align-items:baseline">
+      <div style="font-size:clamp(19px,2.1vw,26px);letter-spacing:-.01em">Ante would not write this figure</div>
+      <div class="m" style="font-size:11px;letter-spacing:.1em;color:var(--faint)">RAISED ${esc(day(a.raised))}</div>
+    </div>
+    <div style="margin-top:26px;background:var(--panel);padding:26px clamp(16px,2.6vw,34px);overflow-wrap:anywhere">
+      <div class="m" style="font-size:10.5px;letter-spacing:.16em;color:var(--faint);text-transform:uppercase">What happened</div>
+      <p style="margin:14px 0 0;font-size:18px;line-height:1.66;max-width:76ch;text-wrap:pretty">${esc(plain(a.what_happened).split("\n").filter(Boolean).join(" — "))}</p>
+      <div class="m" style="font-size:11.5px;color:var(--spot-ink);margin-top:16px;text-transform:uppercase;letter-spacing:.12em">${esc(plain(a.drift || ""))} · ${esc(plain(a.status || ""))}</div>
+    </div>
+    <p style="margin:22px 0 0;font-size:17px;line-height:1.6;color:var(--muted);max-width:66ch;text-wrap:pretty">
+      The rule note came back byte-identical and the figure on the board is still the one a person
+      read. A bot that declines to write an unverified number is worth more than one that is never wrong.</p>`;
+}
+
+async function paint() {
+  const [label, note] = CHROME[L.tab];
+  $("chrome-label").textContent = label;
+  $("pane-note").textContent = note;
+  $("pane").innerHTML = `<p style="margin:0;color:var(--faint)">Loading…</p>`;
+  $("pane").innerHTML = L.tab === "board" ? paneBoard()
+    : L.tab === "refusal" ? paneRefusal() : await paneNote();
+}
+
+/* ------------------------------------------------------------- vault form */
+
+function mappingFields(headers, missing) {
+  return `<div style="border-top:1px solid var(--spot);padding-top:18px;margin-bottom:24px">
+    <div class="eyebrow">Two columns could not be identified</div>
+    <p style="font-size:16.5px;line-height:1.6;color:var(--muted);margin:12px 0 18px;max-width:44ch">
+      Ante will not guess a column that moves money. Point it at the right header and post again.</p>
+    ${missing.map((f) => `<div class="field">
+      <label for="map-${esc(f)}">${esc(f)}</label>
+      <select id="map-${esc(f)}" data-map="${esc(f)}">
+        <option value="">— choose the column —</option>
+        ${headers.map((h) => `<option value="${esc(h)}">${esc(h)}</option>`).join("")}
+      </select></div>`).join("")}
+  </div>`;
+}
+
+async function build(e) {
+  e.preventDefault();
+  const btn = $("build"), out = $("build-out");
+  const file = $("payroll").files[0];
+  if (!file) { out.innerHTML = `<p style="margin:0;color:var(--spot-ink)">Choose a payroll CSV first.</p>`; return; }
+
+  const fd = new FormData();
+  fd.append("payroll", file);
+  for (const k of ["company_name", "uen", "financial_year_end", "annual_revenue_run_rate", "founder_email"])
+    fd.append(k, $(k).value);
+  const picks = {};
+  for (const s of document.querySelectorAll("[data-map]")) if (s.value) picks[s.dataset.map] = s.value;
+  if (Object.keys(picks).length) fd.append("mapping", JSON.stringify(picks));
+
+  btn.disabled = true;
+  out.innerHTML = `<p style="margin:0;color:var(--muted)">Reading the payroll…</p>`;
+  try {
+    const res = await fetch(API + "/api/upload", { method: "POST", body: fd });
+    const r = await res.json();
+    if (r.needs_mapping) {
+      $("mapping").innerHTML = mappingFields(r.headers || [], r.needs_mapping);
+      out.innerHTML = `<p style="margin:0;color:var(--spot-ink)">Two columns need naming — see above.</p>`;
+      return;
+    }
+    if (!res.ok || r.error) {
+      out.innerHTML = `<p style="margin:0;color:var(--spot-ink)">${esc(r.error || r.detail || res.status)}</p>`;
+      return;
+    }
+    const problems = (r.problems || []).length;
+    out.innerHTML = `<div style="border-top:3px solid var(--ink);padding-top:18px">
+      <div class="m" style="font-size:10.5px;letter-spacing:.16em;text-transform:uppercase">Vault built</div>
+      <div style="font-size:22px;margin-top:10px">${esc(r.people ?? "")} people, ${esc(r.rules ?? "")} rules</div>
+      ${problems ? `<ul style="color:var(--spot-ink);font-size:16.5px;line-height:1.6">${(r.problems || []).map((p) => "<li>" + esc(p) + "</li>").join("")}</ul>` : ""}
+      <p style="font-size:17px;line-height:1.6;color:var(--muted);margin-top:12px">
+        <a href="board.html">Open the board &#8599;</a></p></div>`;
+  } catch (err) {
+    out.innerHTML = `<p style="margin:0;color:var(--spot-ink)">The API is not reachable. ${esc(err.message)}</p>`;
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+/* ------------------------------------------------------------------- boot */
+
+function wire() {
+  $("tabs").addEventListener("click", (e) => {
+    const b = e.target.closest("[data-t]");
+    if (!b) return;
+    L.tab = b.dataset.t;
+    for (const t of $("tabs").children) t.setAttribute("aria-selected", String(t === b));
+    paint();
+  });
+  $("vault-form").addEventListener("submit", build);
+  const drop = $("drop"), input = $("payroll");
+  input.addEventListener("change", () => {
+    if (input.files[0]) $("drop-label").textContent = input.files[0].name.toUpperCase();
+  });
+  for (const ev of ["dragenter", "dragover"])
+    drop.addEventListener(ev, (e) => { e.preventDefault(); drop.classList.add("on"); });
+  for (const ev of ["dragleave", "drop"])
+    drop.addEventListener(ev, (e) => { e.preventDefault(); drop.classList.remove("on"); });
+  drop.addEventListener("drop", (e) => {
+    const f = e.dataTransfer.files[0];
+    if (f) { input.files = e.dataTransfer.files; $("drop-label").textContent = f.name.toUpperCase(); }
+  });
+}
+
+async function boot() {
+  wire();
+  renderWatchStatic();
+  paint();
+  try {
+    const [findings, rules, alerts] = await Promise.all(
+      ["/api/findings", "/api/rules", "/api/alerts"].map((u) =>
+        fetch(API + u).then((r) => { if (!r.ok) throw new Error(u); return r.json(); })));
+    L.findings = findings; L.rules = rules; L.alerts = alerts;
+    renderWatchLive();
+    $("proof").innerHTML = [
+      `${findings.rules.length} rules watched for ${esc(findings.company || "this company")}`,
+      `${money(findings.annual_gap_total)} a year provable from your own payroll`,
+      "Every figure quoted from a government page",
+    ].map((t) => "<div>" + t + "</div>").join("");
+    paint();
+  } catch {
+    /* authored copy stands on its own */
+  }
+}
+
+boot();
+</script>
+</body>
+</html>
