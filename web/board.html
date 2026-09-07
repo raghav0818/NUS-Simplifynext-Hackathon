@@ -270,7 +270,7 @@ function figureOf(f) {
   if (a.annual_gap) return [money(a.annual_gap), "a year · from your payroll"];
   if (f.bites === "forecast") return [money(a.value), "of " + money(f.threshold_after)];
   if (f.bites === "above") return [money(f.threshold_before) + " → " + money(f.threshold_after), "the move · priced in the note"];
-  return ["in its cost note", "not arithmetic from the vault"];
+  return ["in its cost note", "priced on the rule"];
 }
 
 const whenOf = (f) => f.days_until === null ? "standing"
@@ -301,10 +301,10 @@ function renderHead() {
   }
   $("lede").innerHTML = (lede || "Nothing in the vault is exposed today") + ".";
 
-  $("sub").innerHTML = "Every figure on this page was copied off a "
+  $("sub").innerHTML = "Every figure on this page comes from a "
     + '<span class="m" style="font-size:.9em">.gov.sg</span> page. '
-    + gaps.length + " of the " + f.parties + " findings price themselves from your own payroll; the other "
-    + f.priced_in_prose + " are priced in the human-written cost note on their rule, quoted rather than paraphrased.";
+    + gaps.length + " of the " + f.parties + " findings are priced from your own payroll; the other "
+    + f.priced_in_prose + " are priced in the cost note on their rule.";
 }
 
 /* ---------------------------------------------------------------- banner */
@@ -329,7 +329,7 @@ function renderBanner() {
         <div style="text-align:right">
           <div class="m banner-fig" style="font-size:${figSize(fig, "clamp(28px,3.4vw,46px)", "clamp(21px,2.3vw,30px)")}">${esc(fig)}</div>
           <div class="m" style="font-size:11.5px;letter-spacing:.14em;color:var(--spot-deep);margin-top:10px;text-transform:uppercase">${esc(note)}</div>
-          <div style="font-size:16.5px;line-height:1.6;color:var(--muted);margin-top:20px;font-style:italic">Priced in the rule&rsquo;s own cost note. Ante does not derive a rate it cannot read off the page.</div>
+          <div style="font-size:16.5px;line-height:1.6;color:var(--muted);margin-top:20px;font-style:italic">Priced in the rule&rsquo;s own cost note.</div>
           <div class="m" style="margin-top:18px;font-size:12px"><a href="${esc(f.resource)}" target="_blank" rel="noopener">${esc(host(f.resource))} &#8599;</a></div>
         </div>
       </div>
@@ -428,10 +428,10 @@ function chain(f) {
     out.push([false, "Machine re-read " + day(fr.checked && fr.checked.on) + ", could not confirm: " + plain(alert.drift || "")]);
     out.push([false, "Escalated to a human " + day(alert.raised) + ", " + plain(alert.status || "")]);
   } else {
-    out.push([true, "Machine re-read " + day(fr.checked && fr.checked.on) + ", unchanged, 0 tokens"]);
+    out.push([true, "Machine re-read " + day(fr.checked && fr.checked.on) + ", unchanged"]);
     const a = f.affected[0] || {};
     out.push([!!a.annual_gap, a.annual_gap
-      ? "Gap is arithmetic over two figures the vault already holds"
+      ? "Gap taken from your payroll against the rule's threshold"
       : "No annual gap derived: this one is priced in its own cost note"]);
   }
   return out;
@@ -516,10 +516,9 @@ function renderFindings() {
 
   const gaps = all.flatMap((r) => r.affected).filter((a) => a.annual_gap).length;
   $("ledger").textContent = S.filter === "all"
-    ? `${gaps} of the ${S.findings.parties} price themselves from your payroll arithmetic, `
+    ? `${gaps} of the ${S.findings.parties} come from your payroll, `
       + `${money(S.findings.annual_gap_total)} a year between them. The other ${S.findings.priced_in_prose} `
-      + `are priced in the human-written cost note on each rule, which Ante quotes rather than paraphrases. `
-      + `Half a bill that is provable beats a whole one that is not.`
+      + `are priced in the cost note on their rule.`
     : `Filtered view: ${list.length} of ${all.length} findings. Clear the filter to see the whole bill.`;
 }
 
@@ -562,7 +561,7 @@ function renderCurator() {
   if (!refusal) {
     el.innerHTML = `<h2 style="font-size:26px;letter-spacing:-.01em">What the curator did this morning</h2>
       <p class="sub">The sweep was clean: every source still says what the vault says, nothing was
-      rewritten, and no alert was raised. A quiet day costs zero tokens.</p>`;
+      rewritten, and no alert was raised.</p>`;
     return;
   }
   const m = S.rules.rules.find((r) => r.path === refusal.rule) || {};
@@ -640,7 +639,7 @@ async function ask() {
   if (!q) return;
   const out = $("answer");
   $("ask").disabled = true;
-  out.innerHTML = `<p class="sub" style="margin:0">Thinking. This one costs tokens; the board above did not&hellip;</p>`;
+  out.innerHTML = `<p class="sub" style="margin:0">Thinking&hellip;</p>`;
   try {
     const res = await fetch(API + "/api/ask", {
       method: "POST",
@@ -650,8 +649,7 @@ async function ask() {
     const body = await res.json();
     if (!res.ok) {
       out.innerHTML = `<p class="sub" style="margin:0"><span class="dead">Commentary unavailable</span> &mdash;
-        ${esc(body.detail || res.status)}. Every figure above is still correct: it is arithmetic over the
-        vault and needs no model.</p>`;
+        ${esc(body.detail || res.status)}.</p>`;
       return;
     }
     out.innerHTML = `<div class="prose">${prose(body.answer)}</div>
@@ -681,8 +679,8 @@ async function sendBrief() {
       out.innerHTML = `<div style="border-top:3px solid var(--spot);padding-top:20px">
         <div class="eyebrow dead">Not sent &mdash; written to the outbox instead</div>
         <div class="m" style="font-size:14px;margin-top:10px">${esc(r.outbox)}</div>
-        <div class="note" style="margin-top:10px">${esc(r.why || "")}. The brief was still rendered in full:
-          an unreachable mail server must not lose it. Set SMTP_HOST, SMTP_USER and SMTP_PASS in
+        <div class="note" style="margin-top:10px">${esc(r.why || "")}. The brief was written to the outbox
+          instead. Set SMTP_HOST, SMTP_USER and SMTP_PASS in
           <span class="m">env/.env</span> to deliver it.</div></div>`;
     } else {
       out.innerHTML = `<div style="border-top:3px solid var(--spot);padding-top:20px">

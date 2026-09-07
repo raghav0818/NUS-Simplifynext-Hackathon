@@ -272,7 +272,7 @@ h2{font-size:clamp(24px,2.6vw,32px);letter-spacing:-.015em}
   </section>
 
   <div class="foot m">
-    Ante &middot; SimplifyNext IGNITE Agentic AI Hackathon 2026 &middot; all person records in the demo vault are synthetic
+    Ante &middot; SimplifyNext IGNITE 2026
   </div>
 </div>
 
@@ -324,7 +324,7 @@ function watchRow(title, h, clock) {
 
 function renderWatchStatic() {
   $("watch-list").innerHTML = STATIC_WATCH.map((r) => watchRow(...r)).join("");
-  $("watch-note").textContent = "the rule base ships curated";
+  $("watch-note").textContent = "";
 }
 
 /* ----------------------------------------------------------- live upgrades */
@@ -336,8 +336,8 @@ function renderWatchLive() {
   $("watch-list").innerHTML = rs.map((r) =>
     watchRow(r.title, host(r.resource), CLOCK[r.clock] || r.clock)).join("");
   const stale = rs.filter((r) => r.overdue_human_review).length;
-  $("watch-note").textContent = rs.length + " rules · "
-    + (stale ? stale + " overdue a human re-read" : "all read by a person within the year");
+  $("watch-note").textContent = rs.length + " rules"
+    + (stale ? " · " + stale + " overdue a human re-read" : "");
 }
 
 function paneBoard() {
